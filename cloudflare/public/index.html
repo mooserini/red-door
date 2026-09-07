@@ -6,6 +6,13 @@
   <button class="rom-btn hide" id="romBtn">Enter Mirror</button>
   <div class="btn-tree hide" id="tree"></div>
   <div class="mobile-prompt hide" id="mobilePrompt">C:/&gt; <span class="cursor"></span></div>
-  <input id="cmd" aria-label="Terminal command" autocomplete="off" spellcheck="false">
+  <form id="terminalCommands" autocomplete="off">
+    <input id="cmd" class="terminal-input" name="terminal-command" type="text" aria-label="Terminal command" autocomplete="off" spellcheck="false">
+  </form>
+  <form id="doorCredentials" autocomplete="on" hidden>
+    <input id="doorHandle" class="terminal-input" name="username" type="text" aria-label="Handle" autocomplete="username" spellcheck="false" autocapitalize="none" maxlength="20" hidden>
+    <input id="doorPassword" class="terminal-input" name="password" type="password" aria-label="Password" autocomplete="current-password" maxlength="128" hidden>
+    <input id="doorConfirm" class="terminal-input" name="password-confirmation" type="password" aria-label="Confirm password" autocomplete="new-password" maxlength="128" hidden>
+  </form>
 </div>
 </body></html>

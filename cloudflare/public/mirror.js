@@ -4,7 +4,7 @@ import { createDoor } from './door.js';
   const screen=document.getElementById('screen');
   const inputRow=document.getElementById('inputRow');
   const cmdline=document.getElementById('cmdline');
-  const cmd=document.getElementById('cmd');
+  let cmd=document.getElementById('cmd');
   const romBtn=document.getElementById('romBtn');
   const crt=document.getElementById('crt');
   const tree=document.getElementById('tree');
@@ -13,6 +13,7 @@ import { createDoor } from './door.js';
 
   const door = createDoor({ screen, input: cmd, inputRow, tree, romBtn, mobilePrompt,
     repaint: renderCmd,
+    onInputChange(next) { cmd = next; },
     onLeave() {
       mode = isMobile() ? 'tree' : 'shell';
       echo('The red door closes behind you.', 'magenta');
@@ -494,19 +495,24 @@ import { createDoor } from './door.js';
     runSeq(seq,0,run);
   }
 
-  cmd.addEventListener('input', renderCmd);
-  cmd.addEventListener('focus', renderCmd);
-  cmd.addEventListener('blur', renderCmd);
-  cmd.addEventListener('keydown', function(e){
-    if(e.key!=='Enter') return;
-    if(door.active){ e.preventDefault(); void door.submit(cmd.value); return; }
-    if(mode==='boot') { e.preventDefault(); return; }
-    e.preventDefault();
-    const v=cmd.value;
-    if(mode==='date'){ handleDate(); }
-    else { cmd.value=''; run(v); renderCmd(); }
-    cmd.focus();
+  // Each input retains its purpose for the lifetime of the page.
+  document.querySelectorAll('.terminal-input').forEach(field => {
+    field.addEventListener('input', renderCmd);
+    field.addEventListener('focus', renderCmd);
+    field.addEventListener('blur', renderCmd);
+    field.addEventListener('keydown', function(e){
+      if(e.key!=='Enter') return;
+      if(door.active){ e.preventDefault(); void door.submit(cmd.value); return; }
+      if(mode==='boot') { e.preventDefault(); return; }
+      e.preventDefault();
+      const v=cmd.value;
+      if(mode==='date'){ handleDate(); }
+      else { cmd.value=''; run(v); renderCmd(); }
+      cmd.focus();
+    });
   });
+  document.getElementById('terminalCommands').addEventListener('submit', e => e.preventDefault());
+  document.getElementById('doorCredentials').addEventListener('submit', e => e.preventDefault());
   romBtn.addEventListener('click', function(){
     if(isMobile() && mode==='mobileWait'){ enterMobile(); return; }
     if(mode==='shell'){ run('mirror'); }

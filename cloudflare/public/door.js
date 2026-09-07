@@ -2,8 +2,19 @@ import { createWriter } from './pacing.js';
 import { derivePasswordKey } from './auth.js';
 
 const PLACES = { tavern: 'The Old Tavern', woods_edge: 'Dark Woods edge', woods: 'The Dark Woods' };
-export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt, repaint, onLeave }) {
+export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt, repaint, onInputChange, onLeave }) {
   const writer = createWriter(screen);
+  const commandInput = input;
+  const credentialsForm = document.getElementById('doorCredentials');
+  const credentialInputs = {
+    handle: document.getElementById('doorHandle'),
+    password: document.getElementById('doorPassword'),
+    confirm: document.getElementById('doorConfirm')
+  };
+  function clearCredentials() {
+    credentialsForm.reset();
+    credentialsForm.hidden = true;
+  }
   let active = false, busy = false, step = 'menu', handle = '', password = '', registering = false;
   let world = null, pending = null;
   const secret = () => step === 'password' || step === 'confirm';
@@ -20,11 +31,19 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
     return result;
   }
   function controls() {
+    // Never turn the command field into a password field. Chrome remembers a
+    // field's credential role even after type/autocomplete are changed back.
+    input = credentialInputs[step] || commandInput;
+    onInputChange(input);
+    commandInput.hidden = input !== commandInput;
+    commandInput.disabled = busy || input !== commandInput;
+    credentialsForm.hidden = input === commandInput;
+    for (const [stage, field] of Object.entries(credentialInputs)) {
+      field.hidden = stage !== step;
+      field.disabled = busy;
+    }
+    credentialInputs.password.autocomplete = registering ? 'new-password' : 'current-password';
     input.disabled = busy;
-    input.type = secret() ? 'password' : 'text';
-    input.autocomplete = secret() ? (registering ? 'new-password' : 'current-password') : step === 'handle' ? 'username' : 'off';
-    input.setAttribute('aria-label', secret() ? (step === 'confirm' ? 'Confirm password' : 'Password') : step === 'handle' ? 'Handle' : 'Terminal command');
-    input.maxLength = secret() ? 128 : step === 'handle' ? 20 : 128;
     inputRow.classList.toggle('hide', busy);
     tree.replaceChildren(); tree.classList.add('hide');
     if (!busy && matchMedia('(max-width:519px)').matches && (step === 'menu' || step === 'game')) {
@@ -51,7 +70,7 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
   async function open() {
     if (active) return;
     active = true; busy = true; step = 'menu'; pending = null;
-    input.value = ''; password = ''; handle = '';
+    clearCredentials(); commandInput.value = ''; password = ''; handle = '';
     romBtn.classList.add('hide'); mobilePrompt.classList.add('hide');
     screen.classList.add('door-screen');
     writer.clear(); // Door handoff: clear display and home before sending anything.
@@ -76,20 +95,22 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
     password = ''; handle = ''; input.value = ''; pending = null;
     active = false; busy = false; world = null;
     writer.clear(); screen.classList.remove('door-screen');
-    input.type = 'text'; input.disabled = false; input.autocomplete = 'off'; input.maxLength = 128;
+    clearCredentials(); input = commandInput; onInputChange(input);
+    input.hidden = false; input.disabled = false; input.maxLength = 128;
     input.setAttribute('aria-label', 'Terminal command');
     onLeave();
   }
   async function submit(raw) {
     if (!active || busy) return;
     const value = secret() ? raw : raw.trim();
-    input.value = '';
+    if (!credentialInputs[step]) input.value = '';
     busy = true; controls();
     try {
       if (step === 'menu') {
         const choice = value.toLowerCase();
         if (choice === 'q' || choice === 'quit' || choice === 'leave') { await leave(); return; }
         if (!['l', 'login', 'n', 'new'].includes(choice)) { await writer.write(['Choose L, N or Q.']); return; }
+        clearCredentials();
         registering = choice === 'n' || choice === 'new'; step = 'handle';
         await writer.write([registering ? 'NEW CALLER' : 'RETURNING CALLER',
           'Handle: 3–20 letters, numbers, underscores or hyphens.']);
@@ -102,7 +123,7 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
         if (registering) { password = value; step = 'confirm'; await writer.write(['Enter it once more.']); }
         else await authenticate(value);
       } else if (step === 'confirm') {
-        if (value !== password) { password = ''; step = 'password'; await writer.write(['Those did not match. Choose your password again.']); return; }
+        if (value !== password) { password = ''; credentialInputs.password.value = ''; credentialInputs.confirm.value = ''; step = 'password'; await writer.write(['Those did not match. Choose your password again.']); return; }
         const chosen = password; password = ''; await authenticate(chosen);
       } else if (step === 'game') {
         const cmd = value.toLowerCase();
@@ -150,11 +171,11 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
       const password_key = await derivePasswordKey(chosen, salt);
       chosen = '';
       const result = await api(registering ? '/api/register' : '/api/login', { handle, salt, password_key });
-      world = result.world; step = 'game';
+      clearCredentials(); world = result.world; step = 'game';
       await writer.write([`Welcome${registering ? '' : ' back'}, ${result.handle}.`, 'Type HELP for commands.', '']);
       await showWorld();
     } catch (error) {
-      step = 'menu'; handle = ''; throw error;
+      clearCredentials(); step = 'menu'; handle = ''; throw error;
     }
   }
   async function sendPending() {

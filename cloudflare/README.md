@@ -13,6 +13,9 @@ Base44 browser-local game implementation is not used.
 
 - A new caller chooses a handle and types a password twice. A returning caller
   enters the same handle and password. Handles are case insensitive.
+- Login uses dedicated username and password fields in a separate form. The
+  terminal command input always stays a text field, so Chrome can save the real
+  login without mistaking later game commands for replacement passwords.
 - No email, recovery key, password reset, or operator recovery endpoint exists.
   The registration screen explains the consequence before account creation.
 - Each handle owns one character. This is not yet a shared multiplayer world.
@@ -122,6 +125,8 @@ remains intact behind a Worker overlay, with unrelated paths passed through.
 caller registering, moving, logging out, and returning to the same save.
 [launch-verification.json](launch-verification.json) records the deployed version,
 route IDs, static hashes, and unchanged shared avatar on both original hosts.
+[credential-field-verification.json](credential-field-verification.json) records
+the subsequent input-field fix, its Chrome checks, and updated deployed hashes.
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for resources, deployment, and rollback.
 `wrangler.jsonc` remains local; `wrangler.production.jsonc` is production.
