@@ -36,13 +36,14 @@ CREATE TABLE receipts (
 -- The insert and checkpoint update are one SQLite transaction. A stale
 -- calculation cannot overwrite another caller, including across isolates.
 CREATE TRIGGER receipt_revision BEFORE INSERT ON receipts
-BEGIN
-  SELECT CASE WHEN NOT EXISTS (
+WHEN NOT EXISTS (
     SELECT 1 FROM worlds WHERE account_id = NEW.account_id
       AND revision = NEW.expected_revision
       AND NEW.revision = revision + 1
       AND receipt_hash = NEW.previous_hash
-  ) THEN RAISE(ABORT, 'revision_conflict') END;
+  )
+BEGIN
+  SELECT RAISE(ABORT, 'revision_conflict');
 END;
 CREATE TRIGGER receipt_checkpoint AFTER INSERT ON receipts
 BEGIN

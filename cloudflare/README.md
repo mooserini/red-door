@@ -105,25 +105,22 @@ same-origin writes, forged-state rejection, concurrent random-command retries,
 revision races and login throttling. Timing tests verify the 240 cps baseline,
 control-byte overhead and stalls across lines.
 
-## Publication boundary
+## Publication status
 
-This checkout is prepared and tested locally. It has no production D1 ID,
-domain routes, or enabled workers.dev URL. Remote resources have not been
-created, migrated, or modified, and the live getadongle.com page is unchanged.
+The approved version is frozen in the private GitHub repository
+[mooserini/red-door](https://github.com/mooserini/red-door), tagged
+`freeze-2026-09-07`. Deployment preparation follows in a separate commit.
 
-Read-only inventory found the existing Cloudflare D1 database and R2 bucket both
-named `resonantmirror`. The config names `red-door` / `red-door-assets` are local
-development targets until production placement is chosen. Do not run an
-unqualified deployment and accidentally auto-provision a second site.
+The dedicated remote D1 schema and R2 assets are staged. The production Worker
+has not been attached to the live domain: Cloudflare rejected its CPU allowance
+on Workers Free. Workers Paid requires Tom's approval before purchase. The
+original live site and its existing bucket remain unchanged.
 
-Before live publication, inspect and preserve the existing domain's Worker
-and routing configuration, decide whether to reuse the existing R2 bucket under
-a versioned prefix, bind a dedicated game database or confirm a collision-free
-schema location, and back up the live assets. Confirm the Workers CPU allowance
-can run the password KDF; local execution does not prove a hosted plan's CPU
-budget. Then apply migrations, upload the complete asset release, and deploy the
-reviewed route change. Verify register → move → logout → login restores the same
-character on the hosted runtime. No password or recovery service is to be added.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the exact resources, reviewed routes,
+remaining hosted checks, and rollback procedure. `wrangler.jsonc` remains the
+local development configuration; `wrangler.production.jsonc` is the explicit
+production configuration. The production wrapper passes unrelated site paths
+through to the original origin.
 
 Cloudflare references consulted:
 - https://developers.cloudflare.com/d1/worker-api/d1-database/

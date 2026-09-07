@@ -1,0 +1,23 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "red-door",
+  "account_id": "815bcdaf788850798df37ed8f3afb8d0",
+  "main": "src/production.ts",
+  "compatibility_date": "2026-09-07",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "limits": { "cpu_ms": 1000 },
+  // Leave detached until Workers Paid is enabled and the launch is ready.
+  // The reviewed live routes are listed in DEPLOYMENT.md.
+  "routes": [],
+  "triggers": { "crons": ["17 5 * * *"] },
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "red-door",
+    "database_id": "9be6882b-1919-4c79-a96a-0143e635a06e",
+    "migrations_dir": "migrations"
+  }],
+  "r2_buckets": [{ "binding": "STATIC", "bucket_name": "red-door-assets" }]
+}

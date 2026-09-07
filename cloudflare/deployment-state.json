@@ -1,0 +1,38 @@
+{
+  "captured_at": "2026-09-07T15:19:39.161Z",
+  "status": "staged; awaiting Workers Paid and hosted smoke test",
+  "frozen_commit": "48ba81efd31a7895c2ad09e78771d28e18333988",
+  "frozen_tag": "freeze-2026-09-07",
+  "github": "https://github.com/mooserini/red-door",
+  "database_id": "9be6882b-1919-4c79-a96a-0143e635a06e",
+  "migration": "0001_red_door.sql",
+  "asset_bucket": "red-door-assets",
+  "assets_verified_sha256": {
+    "assets/fonts/Ac437_ATT_PC6300.ttf": "c8c292f149f58bd4a504754a1a711ea180cac1c8bef7d170e9c2cba66b21b547",
+    "assets/linktree-qr-400.png": "9f8d0450ad6a075209db7d50cc610a7102c2089aa638403cbb7071a6e21e46b8",
+    "assets/projects-core.v1.js": "99068c6304af5403d4f4399badf71f2f4aadb781d3789f76bbf580caa2c28d54",
+    "assets/projects.json": "1d68e1afe4d865f596684784e72bbf0a1c52864359d8186b1a2192cd913148dc",
+    "door.js": "74cd562c832f39a7f0123da1b6aa75666dea3e4b9aadf1e1f7e56d38b33df51e",
+    "index.html": "893ab3acf90bf6adda5b57c506a47b68fe5a32c5da300d2d9e715d1e752c5fd1",
+    "mirror.css": "72fcbde041f30fe4b96f0482039fb1cd0e74fd3dfddcc03aaed910377d008d68",
+    "mirror.js": "c6feeb473d2636e89ec5de81ea51651b4414647c90341be0a63e2a7f9aa94781",
+    "pacing.js": "71b21dadc65fb87932175a5b6ac838ed7152e77aa6ecb460bca6d5242020ce8e"
+  },
+  "original_live": {
+    "https://www.getadongle.com/index.html": {
+      "status": 200,
+      "sha256": "d16c8c2372bdb86890a0cede5274e098c1c46323b7d125f5be2d640890fe17d3",
+      "etag": null
+    },
+    "https://www.getadongle.com/assets/resonant_mirror_circle_avatar.png": {
+      "status": 200,
+      "sha256": "bfaa0ef5444d789ca3e5c293ac13a3ae38251173093e06ee945dcc7e742988e2",
+      "etag": "\"9aca3c77704f2957fa07900de08c457b\""
+    }
+  },
+  "worker_routes_applied": [],
+  "deployment_error": {
+    "code": 100328,
+    "message": "CPU limits are not supported for the Free plan."
+  }
+}
