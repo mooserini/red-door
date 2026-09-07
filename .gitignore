@@ -1,0 +1,12 @@
+__pycache__/
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+.DS_Store
+node_modules/
+.wrangler/
+.env*
+.dev.vars*
+cloudflare/dist/
+backups/

@@ -1,0 +1,29 @@
+{
+  "tests": "6 passed; includes committed-state recovery after SIGKILL, duplicate retry, concurrent revision conflict and origin rejection",
+  "browser_proof": "In-app browser: woods, search, search; tab closed; fresh tab recovered revision 3 and lost shoe",
+  "database_path": "/Users/thomaskenny/.local/share/red-door-local/world.sqlite3",
+  "database_bytes": 12288,
+  "integrity": {
+    "integrity": "ok",
+    "receipts": 4,
+    "latest_hash": "294e2bbde11a569759ca3739a05263d8d15f218663160b8746b1c45cd6c71e15"
+  },
+  "current": {
+    "revision": 3,
+    "request_id": "207e69c1-1396-416c-bd8f-0a284c910971",
+    "state": {
+      "flags": [],
+      "health": 100,
+      "inventory": [
+        "lost shoe"
+      ],
+      "last_scene": "You find one excellent lost shoe. Its previous owner remains a mystery.",
+      "location": "woods_edge",
+      "name": "Moosenberg",
+      "visits": 2
+    },
+    "receipt_hash": "294e2bbde11a569759ca3739a05263d8d15f218663160b8746b1c45cd6c71e15",
+    "created_at": "2026-09-05T11:20:50.885Z"
+  },
+  "runtime_scope": "Browser JavaScript game and Python loopback SQLite bridge; no VM or Synchronet integration"
+}

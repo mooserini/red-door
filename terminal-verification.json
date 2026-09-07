@@ -1,0 +1,49 @@
+{
+  "checked_at": "2026-09-05T11:36:03.725516+00:00",
+  "terminal": "Google hterm 1.92.1-HEAD+gd8043e3 from Secure Shell 0.80",
+  "url": "http://127.0.0.1:8766/terminal",
+  "transport": "HTTP JSON commands and server-produced ANSI output",
+  "runtime": "Python process on this Mac",
+  "database": {
+    "path": "/Users/thomaskenny/.local/share/red-door-local/world.sqlite3",
+    "bytes": 20480
+  },
+  "latest_world": {
+    "revision": 10,
+    "request_id": "e985eeac-7ab1-4832-9155-b087c8da7973",
+    "state": {
+      "flags": [],
+      "health": 100,
+      "inventory": [
+        "lost shoe",
+        "tarnished coin"
+      ],
+      "last_scene": "The trees lean inward. A blue lantern flickers far off the path.",
+      "location": "woods_edge",
+      "name": "Moosenberg",
+      "visits": 3
+    },
+    "receipt_hash": "5cbc8cf4107819eadf3103fff07c3c567115fa901b0e5a430b70fcc5d8b33577",
+    "created_at": "2026-09-05T11:34:26.421Z"
+  },
+  "verification": {
+    "integrity": "ok",
+    "receipts": 11,
+    "latest_hash": "5cbc8cf4107819eadf3103fff07c3c567115fa901b0e5a430b70fcc5d8b33577"
+  },
+  "automated_tests": {
+    "passed": 8,
+    "includes": "SIGKILL and restart recovery; concurrent command deduplication; reject browser-supplied state"
+  },
+  "interactive_proof": [
+    "Sent woods through hterm: revision 9 became 10",
+    "Closed terminal tab",
+    "Opened fresh terminal: revision 10, same receipt, lost shoe and tarnished coin restored",
+    "Verified help via individual keyboard presses"
+  ],
+  "not_verified": [
+    "Synchronet execution",
+    "Cloudflare deployment",
+    "Safari or Opera browser compatibility"
+  ]
+}

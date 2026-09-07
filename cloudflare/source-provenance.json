@@ -1,0 +1,30 @@
+{
+  "captured_at": "2026-09-07T14:29:41.587420+00:00",
+  "source": "Live original; not the Base44 fork. Inline site CSS and script extracted; response-specific Cloudflare challenge scripts excluded.",
+  "files": [
+    {
+      "url": "https://www.getadongle.com/index.html",
+      "sha256": "1dad5bf0e624c5a722f06f2cd9876f2df6d77e6260c56a1de7e6b347d8362bdb"
+    },
+    {
+      "url": "https://www.getadongle.com/assets/projects-core.v1.js",
+      "sha256": "99068c6304af5403d4f4399badf71f2f4aadb781d3789f76bbf580caa2c28d54",
+      "bytes": 3918
+    },
+    {
+      "url": "https://www.getadongle.com/assets/projects.json",
+      "sha256": "1d68e1afe4d865f596684784e72bbf0a1c52864359d8186b1a2192cd913148dc",
+      "bytes": 1020
+    },
+    {
+      "url": "https://www.getadongle.com/assets/fonts/Ac437_ATT_PC6300.ttf",
+      "sha256": "c8c292f149f58bd4a504754a1a711ea180cac1c8bef7d170e9c2cba66b21b547",
+      "bytes": 26248
+    },
+    {
+      "url": "https://www.getadongle.com/assets/linktree-qr-400.png",
+      "sha256": "9f8d0450ad6a075209db7d50cc610a7102c2089aa638403cbb7071a6e21e46b8",
+      "bytes": 136385
+    }
+  ]
+}

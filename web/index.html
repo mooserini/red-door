@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>The Red Door — a small world behind the glass</title>
+  <link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><span class="signal">● LOCAL WORLD</span><span id="connection">Opening the ledger…</span></header>
+    <section class="world" aria-labelledby="title">
+      <div class="door" aria-hidden="true">╭───────╮<br>│       │<br>│     ▪ │<br>│       │<br>╰───────╯</div>
+      <p class="eyebrow">A SMALL WORLD BEHIND THE GLASS</p>
+      <h1 id="title">The Red Door</h1>
+      <p class="intro">The room forgets the screen. The ledger keeps your place.</p>
+      <div class="rule"></div>
+      <p class="eyebrow" id="location">THE OLD TAVERN</p>
+      <p id="scene" aria-live="polite">A red door waits in the dark.</p>
+      <dl class="status"><div><dt>TRAVELER</dt><dd id="traveler">—</dd></div><div><dt>HEALTH</dt><dd id="health">—</dd></div><div><dt>INVENTORY</dt><dd id="inventory">—</dd></div></dl>
+      <form id="command-form"><label for="command">Your next move</label><div class="command-line"><span aria-hidden="true">›</span><input id="command" placeholder="woods, explore, search, rest…" autocomplete="off" maxlength="120" disabled><button id="submit" disabled>Enter ↵</button></div></form>
+      <nav aria-label="World actions"><button data-command="tavern" disabled>Tavern</button><button data-command="woods" disabled>Woods</button><button data-command="explore" disabled>Explore</button><button data-command="search" disabled>Search</button><button data-command="rest" disabled>Rest</button><button data-command="drink" disabled>Drink</button></nav>
+      <p id="notice" role="status">Loading your last saved moment.</p>
+    </section>
+    <aside>
+      <div class="ledger-heading"><h2>Existence receipts</h2><button id="reload">Reload world</button></div>
+      <p class="aside-intro">Written on this Mac. Recovered whenever you return.</p>
+      <ol id="receipts"></ol>
+      <details><summary>Inspect the storage</summary><p>No cookies or browser storage hold this world. The browser sends commands. The server runs the game and writes receipts to a local SQLite ledger.</p><code id="db-path"></code><p id="db-size"></p><button id="verify">Verify receipt chain</button><p id="verification" role="status"></p></details>
+    </aside>
+    <footer><a href="/terminal">Open Google terminal ↗</a><br>Close this tab. Open it again. The woods keep your place.</footer>
+  </main>
+</body>
+</html>

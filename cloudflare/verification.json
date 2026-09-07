@@ -1,0 +1,31 @@
+{
+  "verified_at": "2026-09-07T14:44:50.893604+00:00",
+  "scope": "local Cloudflare Workers runtime with local D1 and R2; no production changes",
+  "checks": {
+    "typescript": "pass",
+    "worker_bundle": "pass",
+    "automated_tests": {
+      "passed": 10,
+      "failed": 0
+    },
+    "browser": [
+      "Red Door (with space) clears the Mirror screen before output",
+      "new handle and twice-entered masked password create a local account",
+      "woods saves position at revision 1",
+      "reload and reddoor restore Dark Woods edge at revision 1",
+      "logout clears the door and returns to the Mirror"
+    ],
+    "timing": "240 wire bytes/s at 8N1; 30-140ms authored stalls after 480-1200 bytes; no historical-video calibration"
+  },
+  "preview_url": "http://localhost:8787/",
+  "files": {
+    "src/worker.ts": "985c8689267a5b4c2795ebf55672c8ae5f97b1fea865091301d61f015a467a67",
+    "src/game.ts": "92fa848b37ac201c071268b184c260b7d30a82407a390e5c872fa3a689495cec",
+    "migrations/0001_red_door.sql": "7f5a39c8a400b9e792db1805c1a3eb4a9595182345d1501bbcc8da1a5261c20e",
+    "public/index.html": "893ab3acf90bf6adda5b57c506a47b68fe5a32c5da300d2d9e715d1e752c5fd1",
+    "public/mirror.js": "dd9aa31511d066992e12d21a05204f7bba7d66928a16ee48759920cf3a55f93f",
+    "public/door.js": "7c297366c4c0c0f83f1adf66e7a5ef0e34b3a2c5533c04a93bc2dd8fdc338282",
+    "public/pacing.js": "71b21dadc65fb87932175a5b6ac838ed7152e77aa6ecb460bca6d5242020ce8e",
+    "wrangler.jsonc": "60920b4435a8c6e402c0f8e4f9e19e64678f71471056be42f16aa7c0189458dd"
+  }
+}

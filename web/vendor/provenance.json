@@ -1,0 +1,17 @@
+{
+  "source": "Installed Google Secure Shell extension 0.80",
+  "extension_id": "iodihamcpbpeioajjeobimgagajmlibd",
+  "upstream": "https://chromium.googlesource.com/apps/libapps/",
+  "hterm_version": "1.92.1-HEAD+gd8043e3",
+  "libdot_version": "9.0.0-HEAD+gd8043e3",
+  "files": {
+    "hterm/index.js": {
+      "sha256": "c086ab4b51442abbb85ce99119f8562d6666f1eeae28857faf3868e151fac8e2",
+      "bytes": 236970
+    },
+    "libdot/index.js": {
+      "sha256": "70d322fa9c2abeb1b13b5d3c07175a23762e7cdaa02eb10e163d1e516d1deb2b",
+      "bytes": 46638
+    }
+  }
+}

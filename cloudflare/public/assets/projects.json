@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "owner": "Tom Kenny",
+  "updated": "2026-08-14",
+  "work": [
+    {
+      "name": "The Resonant Mirror",
+      "blurb": "CRT/terminal landing page. A fake AT&T PC 6300 boot drops to a C:/> shell.",
+      "status": "live",
+      "url": "https://www.getadongle.com"
+    },
+    {
+      "name": "Vesper",
+      "blurb": "Living real-weather web experiment evolving from the Mirror.",
+      "status": "in-beta",
+      "url": "https://vesper-real-weather-lab.pages.dev/"
+    },
+    {
+      "name": "Dual-build agent research",
+      "blurb": "LingLing + Ara exploring A2A, with Discord as a lightweight human-visible bridge.",
+      "status": "building",
+      "url": ""
+    },
+    {
+      "name": "Tailnet-routed local inference",
+      "blurb": "Private local-model workflows across an authenticated mesh; no public inference endpoint.",
+      "status": "building",
+      "url": ""
+    }
+  ],
+  "links": [
+    {
+      "label": "Linktree",
+      "url": "https://linktr.ee/Resonantmirror"
+    }
+  ]
+}
