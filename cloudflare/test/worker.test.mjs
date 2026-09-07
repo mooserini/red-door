@@ -2,6 +2,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { Miniflare } from 'miniflare';
+import { derivePasswordKey } from '../public/auth.js';
 
 let mf, db;
 const origin = 'https://door.test';
@@ -21,7 +22,12 @@ before(async () => {
 });
 after(async () => { await mf?.dispose(); });
 
-async function request(path, { data, cookie, method, requestOrigin = origin, address } = {}) {
+async function request(path, { data, cookie, method, requestOrigin = origin, address, raw = false } = {}) {
+  if (!raw && ['/api/register', '/api/login'].includes(path) && typeof data?.password === 'string') {
+    const params = await request('/api/auth-params', { data: { handle: data.handle }, requestOrigin, address });
+    if (params.status !== 200) return params;
+    data = { handle: data.handle, salt: params.data.salt, password_key: await derivePasswordKey(data.password, params.data.salt) };
+  }
   const headers = { Origin: requestOrigin, 'CF-Connecting-IP': address || `192.0.2.${++ip}` };
   if (cookie) headers.Cookie = cookie;
   if (data !== undefined) headers['Content-Type'] = 'application/json';
@@ -49,7 +55,7 @@ test('registration hashes passwords, folds handle case, and has no recovery endp
   assert.match(caller.headers.get('Set-Cookie'), /HttpOnly; Secure; SameSite=Strict/);
   const account = await db.prepare('SELECT * FROM accounts WHERE handle_key = ?').bind('moosetest').first();
   assert.notEqual(account.password_hash, password);
-  assert.match(account.password_hash, /^pbkdf2-sha256-600000:[a-f0-9]{64}$/);
+  assert.match(account.password_hash, /^client-pbkdf2-sha256-600000-v1:[a-f0-9]{64}$/);
   assert.equal((await request('/api/register', { data: { handle: 'moosetest', password } })).status, 409);
   assert.equal((await request('/api/recover', { data: { handle: 'MooseTest' } })).status, 404);
   const bad = await request('/api/login', { data: { handle: 'MooseTest', password: 'wrong-password' } });
@@ -91,4 +97,27 @@ test('login attempts are throttled before expensive hashing', async () => {
   await db.prepare('INSERT INTO auth_limits VALUES (?, 8, ?)').bind(
     (await import('node:crypto')).createHash('sha256').update('handle:throttled').digest('hex'), Math.floor(Date.now()/1000)+60).run();
   assert.equal((await request('/api/login', { data: { handle: 'Throttled', password } })).status, 429);
+});
+
+test('a leaked database verifier cannot be replayed as a password key; plaintext is rejected', async () => {
+  await register('VerifierCaller');
+  const a = await db.prepare('SELECT * FROM accounts WHERE handle_key = ?').bind('verifiercaller').first();
+  const derived = await derivePasswordKey(password, a.password_salt);
+  const stored = a.password_hash.split(':')[1];
+  assert.notEqual(stored, derived);
+  assert.equal((await request('/api/login', { data: { handle: a.handle, salt: a.password_salt, password_key: stored } })).status, 401);
+  assert.equal((await request('/api/login', { raw: true, data: { handle: a.handle, password } })).status, 400);
+  assert.equal((await request('/api/login', { data: { handle: a.handle, salt: '0'.repeat(32), password_key: derived } })).status, 401);
+  assert.equal((await request('/api/login', { data: { handle: a.handle, password_key: 'short', salt: a.password_salt } })).status, 400);
+});
+test('frozen-preview accounts upgrade their verifier while retaining their saved world', async () => {
+  const caller = await register('LegacyCaller');
+  const saved = await request('/api/commands', { cookie: caller.cookie, data: move('woods') });
+  const a = await db.prepare('SELECT * FROM accounts WHERE handle_key = ?').bind('legacycaller').first();
+  const legacy = 'pbkdf2-sha256-600000:' + await derivePasswordKey(password, a.password_salt);
+  await db.prepare('UPDATE accounts SET password_hash = ? WHERE id = ?').bind(legacy, a.id).run();
+  const back = await request('/api/login', { data: { handle: 'LEGACYCALLER', password } });
+  assert.equal(back.status, 200); assert.deepEqual(back.data.world, saved.data.world);
+  const upgraded = await db.prepare('SELECT password_hash FROM accounts WHERE id = ?').bind(a.id).first();
+  assert.match(upgraded.password_hash, /^client-pbkdf2-sha256-600000-v1:/);
 });

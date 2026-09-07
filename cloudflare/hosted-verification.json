@@ -1,0 +1,51 @@
+{
+  "checked_at": "2026-09-07T16:47:19.475Z",
+  "origin": "https://www.getadongle.com",
+  "test_handle": "Probemtrh49y9",
+  "client_kdf_ms": 65,
+  "checks": [
+    {
+      "path": "/api/auth-params",
+      "status": 200,
+      "elapsed_ms": 841
+    },
+    {
+      "path": "/api/register",
+      "status": 201,
+      "elapsed_ms": 187
+    },
+    {
+      "path": "/api/commands",
+      "status": 200,
+      "elapsed_ms": 237
+    },
+    {
+      "path": "/api/logout",
+      "status": 200,
+      "elapsed_ms": 73
+    },
+    {
+      "path": "/api/world",
+      "status": 401,
+      "elapsed_ms": 28
+    },
+    {
+      "path": "/api/auth-params",
+      "status": 200,
+      "elapsed_ms": 131
+    },
+    {
+      "path": "/api/login",
+      "status": 200,
+      "elapsed_ms": 174
+    },
+    {
+      "path": "/api/logout",
+      "status": 200,
+      "elapsed_ms": 70
+    }
+  ],
+  "restored_revision": 1,
+  "restored_location": "woods_edge",
+  "success": true
+}

@@ -1,4 +1,5 @@
 import { createWriter } from './pacing.js';
+import { derivePasswordKey } from './auth.js';
 
 const PLACES = { tavern: 'The Old Tavern', woods_edge: 'Dark Woods edge', woods: 'The Dark Woods' };
 export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt, repaint, onLeave }) {
@@ -145,7 +146,10 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
   async function authenticate(chosen) {
     password = '';
     try {
-      const result = await api(registering ? '/api/register' : '/api/login', { handle, password: chosen });
+      const { salt } = await api('/api/auth-params', { handle });
+      const password_key = await derivePasswordKey(chosen, salt);
+      chosen = '';
+      const result = await api(registering ? '/api/register' : '/api/login', { handle, salt, password_key });
       world = result.world; step = 'game';
       await writer.write([`Welcome${registering ? '' : ' back'}, ${result.handle}.`, 'Type HELP for commands.', '']);
       await showWorld();

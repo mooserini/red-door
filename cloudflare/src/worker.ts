@@ -1,10 +1,11 @@
-import { pbkdf2Sync, randomBytes, createHash, timingSafeEqual } from 'node:crypto';
+import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { advance, initialState } from './game';
 
 const COOKIE = '__Host-reddoor';
-const ITERATIONS = 600_000;
 const SESSION_SECONDS = 60 * 60 * 24 * 7;
-const HASH_SCHEME = 'pbkdf2-sha256-600000:';
+const HASH_SCHEME = 'client-pbkdf2-sha256-600000-v1:';
+const LEGACY_SCHEME = 'pbkdf2-sha256-600000:';
+const verifier = (salt: string, key: string) => sha(`reddoor-login-v1:${salt}:${key}`);
 type WorldRow = { state_json: string; revision: number; receipt_hash: string };
 type ReceiptRow = WorldRow & { request_id: string; command: string; expected_revision: number; created_at: number };
 type AccountRow = { id: string; handle: string; password_hash: string; password_salt: string };
@@ -52,13 +53,28 @@ async function body(request: Request): Promise<Record<string, unknown>> {
     return data as Record<string, unknown>;
   } catch { throw new HttpError(400, 'Invalid request.'); }
 }
-function credentials(data: Record<string, unknown>) {
-  const { handle, password } = data;
+function callerHandle(data: Record<string, unknown>) {
+  const { handle } = data;
   if (typeof handle !== 'string' || !/^[A-Za-z0-9_-]{3,20}$/.test(handle))
     throw new HttpError(400, 'Handle: 3–20 letters, numbers, underscores or hyphens.');
-  if (typeof password !== 'string' || password.length < 8 || Buffer.byteLength(password) > 128)
-    throw new HttpError(400, 'Password: at least 8 characters, at most 128 bytes.');
-  return { handle, key: handle.toLowerCase(), password };
+  return { handle, key: handle.toLowerCase() };
+}
+function credentials(data: Record<string, unknown>) {
+  const caller = callerHandle(data);
+  const { password_key, salt } = data;
+  // This endpoint never accepts plaintext passwords or a stored verifier.
+  if ('password' in data || typeof password_key !== 'string' || !/^[a-f0-9]{64}$/.test(password_key) ||
+      typeof salt !== 'string' || !/^[a-f0-9]{32}$/.test(salt))
+    throw new HttpError(400, 'Reload the page and enter your password again.');
+  return { ...caller, passwordKey: password_key, salt };
+}
+async function authParams(request: Request, env: Env, data: Record<string, unknown>) {
+  const { key } = callerHandle(data);
+  await rateLimit(request, env, key);
+  const account = await env.DB.prepare('SELECT password_salt FROM accounts WHERE handle_key = ?')
+    .bind(key).first<{ password_salt: string }>();
+  // Salt is public. Unknown callers receive fresh random salt without reserving a handle.
+  return json({ salt: account?.password_salt || randomBytes(16).toString('hex') });
 }
 async function rateLimit(request: Request, env: Env, handle: string) {
   const now = seconds();
@@ -74,7 +90,7 @@ async function rateLimit(request: Request, env: Env, handle: string) {
   }
 }
 async function login(request: Request, env: Env, data: Record<string, unknown>, register: boolean) {
-  const { handle, key, password } = credentials(data);
+  const { handle, key, passwordKey, salt } = credentials(data);
   await rateLimit(request, env, key);
   let account = await env.DB.prepare('SELECT id, handle, password_hash, password_salt FROM accounts WHERE handle_key = ?')
     .bind(key).first<AccountRow>();
@@ -84,8 +100,7 @@ async function login(request: Request, env: Env, data: Record<string, unknown>, 
     .bind(sha(token), id, now + SESSION_SECONDS);
   if (register) {
     if (account) throw new HttpError(409, 'That handle is already taken.');
-    const salt = randomBytes(16).toString('hex');
-    const passwordHash = HASH_SCHEME + pbkdf2Sync(password, salt, ITERATIONS, 32, 'sha256').toString('hex');
+    const passwordHash = HASH_SCHEME + verifier(salt, passwordKey);
     const id = crypto.randomUUID();
     const state = JSON.stringify(initialState(handle));
     try {
@@ -102,10 +117,16 @@ async function login(request: Request, env: Env, data: Record<string, unknown>, 
     }
     account = { id, handle, password_hash: passwordHash, password_salt: salt };
   } else {
-    // The same KDF runs for an unknown handle; never store a plaintext password.
-    const actual = pbkdf2Sync(password, account?.password_salt || '0'.repeat(32), ITERATIONS, 32, 'sha256');
-    const expected = Buffer.from(account?.password_hash.slice(HASH_SCHEME.length) || '0'.repeat(64), 'hex');
-    if (!timingSafeEqual(actual, expected) || !account) throw new HttpError(401, 'Handle or password not recognized.');
+    const legacy = account?.password_hash.startsWith(LEGACY_SCHEME);
+    const stored = legacy ? verifier(account!.password_salt, account!.password_hash.slice(LEGACY_SCHEME.length))
+      : account?.password_hash.startsWith(HASH_SCHEME) ? account.password_hash.slice(HASH_SCHEME.length) : '0'.repeat(64);
+    const actual = Buffer.from(verifier(salt, passwordKey), 'hex');
+    const expected = Buffer.from(stored, 'hex');
+    if (expected.length !== actual.length || !timingSafeEqual(actual, expected) || !account || salt !== account.password_salt)
+      throw new HttpError(401, 'Handle or password not recognized.');
+    // Preserve callers created in the frozen local preview, without running its old server KDF.
+    if (legacy) await env.DB.prepare('UPDATE accounts SET password_hash = ? WHERE id = ? AND password_hash = ?')
+      .bind(HASH_SCHEME + stored, account.id, account.password_hash).run();
     await session(account.id).run();
   }
   // Rotate a previous browser session, without invalidating other devices.
@@ -171,6 +192,7 @@ async function route(request: Request, env: Env): Promise<Response> {
     }
     if (request.method !== 'POST') throw new HttpError(405, 'Method not allowed.');
     const data = await body(request);
+    if (url.pathname === '/api/auth-params') return authParams(request, env, data);
     if (url.pathname === '/api/register') return login(request, env, data, true);
     if (url.pathname === '/api/login') return login(request, env, data, false);
     if (url.pathname === '/api/logout') {
@@ -183,7 +205,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'GET' && request.method !== 'HEAD') throw new HttpError(405, 'Method not allowed.');
   const key = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
   // Serve only this release's known public surface; no bucket listing or arbitrary keys.
-  if (!['index.html', 'mirror.css', 'mirror.js', 'door.js', 'pacing.js',
+  if (!['index.html', 'mirror.css', 'mirror.js', 'door.js', 'pacing.js', 'auth.js',
     'assets/projects-core.v1.js', 'assets/projects.json', 'assets/fonts/Ac437_ATT_PC6300.ttf', 'assets/linktree-qr-400.png'].includes(key))
     throw new HttpError(404, 'Not found.');
   const object = await env.STATIC.get(key);

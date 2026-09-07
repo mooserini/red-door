@@ -1,0 +1,104 @@
+{
+  "checked_at": "2026-09-07T16:51:01.571Z",
+  "status": "live on existing Workers Free account",
+  "worker_version": "a2821989-f25f-4970-b46a-4163ea68f00d",
+  "routes": [
+    {
+      "id": "8637f67631ca4baa9579a53bf18752af",
+      "pattern": "www.getadongle.com/*",
+      "script": "red-door",
+      "request_limit_fail_open": false
+    },
+    {
+      "id": "63103cffc1fe48ed8ca0081d0f7b8fe9",
+      "pattern": "getadongle.com/*",
+      "script": "red-door",
+      "request_limit_fail_open": false
+    }
+  ],
+  "checks": [
+    {
+      "path": "assets/fonts/Ac437_ATT_PC6300.ttf",
+      "status": 200,
+      "sha256": "c8c292f149f58bd4a504754a1a711ea180cac1c8bef7d170e9c2cba66b21b547"
+    },
+    {
+      "path": "assets/linktree-qr-400.png",
+      "status": 200,
+      "sha256": "9f8d0450ad6a075209db7d50cc610a7102c2089aa638403cbb7071a6e21e46b8"
+    },
+    {
+      "path": "assets/projects-core.v1.js",
+      "status": 200,
+      "sha256": "99068c6304af5403d4f4399badf71f2f4aadb781d3789f76bbf580caa2c28d54"
+    },
+    {
+      "path": "assets/projects.json",
+      "status": 200,
+      "sha256": "1d68e1afe4d865f596684784e72bbf0a1c52864359d8186b1a2192cd913148dc"
+    },
+    {
+      "path": "auth.js",
+      "status": 200,
+      "sha256": "9da8bcc08ce00a517d78d567c26e92ad5599d89ed47197acbe16338e4e973c5d"
+    },
+    {
+      "path": "door.js",
+      "status": 200,
+      "sha256": "5f27579a3eefd1e800319a6e4764007d16b92470bd04c19da0c4237efe92fbd3"
+    },
+    {
+      "path": "index.html",
+      "status": 200,
+      "normalized_sha256": "893ab3acf90bf6adda5b57c506a47b68fe5a32c5da300d2d9e715d1e752c5fd1",
+      "cloudflare_challenge_injected": true
+    },
+    {
+      "path": "mirror.css",
+      "status": 200,
+      "sha256": "72fcbde041f30fe4b96f0482039fb1cd0e74fd3dfddcc03aaed910377d008d68"
+    },
+    {
+      "path": "mirror.js",
+      "status": 200,
+      "sha256": "c6feeb473d2636e89ec5de81ea51651b4414647c90341be0a63e2a7f9aa94781"
+    },
+    {
+      "path": "pacing.js",
+      "status": 200,
+      "sha256": "71b21dadc65fb87932175a5b6ac838ed7152e77aa6ecb460bca6d5242020ce8e"
+    },
+    {
+      "url": "https://www.getadongle.com/",
+      "status": 200,
+      "normalized_sha256": "893ab3acf90bf6adda5b57c506a47b68fe5a32c5da300d2d9e715d1e752c5fd1",
+      "cloudflare_challenge_injected": true
+    },
+    {
+      "url": "https://www.getadongle.com/index.html?boot=1",
+      "status": 200,
+      "normalized_sha256": "893ab3acf90bf6adda5b57c506a47b68fe5a32c5da300d2d9e715d1e752c5fd1",
+      "cloudflare_challenge_injected": true
+    },
+    {
+      "url": "https://getadongle.com/",
+      "status": 200,
+      "normalized_sha256": "893ab3acf90bf6adda5b57c506a47b68fe5a32c5da300d2d9e715d1e752c5fd1",
+      "cloudflare_challenge_injected": true
+    },
+    {
+      "url": "https://getadongle.com/index.html?boot=1",
+      "status": 200,
+      "normalized_sha256": "893ab3acf90bf6adda5b57c506a47b68fe5a32c5da300d2d9e715d1e752c5fd1",
+      "cloudflare_challenge_injected": true
+    },
+    {
+      "host": "www.getadongle.com",
+      "passthrough_avatar": "unchanged"
+    },
+    {
+      "host": "railway.getadongle.com",
+      "passthrough_avatar": "unchanged"
+    }
+  ]
+}

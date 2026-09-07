@@ -7,10 +7,10 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
-  "limits": { "cpu_ms": 1000 },
-  // Leave detached until Workers Paid is enabled and the launch is ready.
-  // The reviewed live routes are listed in DEPLOYMENT.md.
-  "routes": [],
+  "routes": [
+    { "pattern": "www.getadongle.com/*", "zone_id": "4e2ee5bb4dee2ff2ddcced14e2e0d5e9" },
+    { "pattern": "getadongle.com/*", "zone_id": "4e2ee5bb4dee2ff2ddcced14e2e0d5e9" }
+  ],
   "triggers": { "crons": ["17 5 * * *"] },
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "d1_databases": [{

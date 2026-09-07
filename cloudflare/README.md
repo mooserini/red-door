@@ -73,7 +73,9 @@ Timing source: [USRobotics modem glossary](https://support.usr.com/support/5686g
 - Checksums are change-detection receipts, not signatures or protection against
   a database administrator. Each initial checkpoint starts its own chain; the
   Mac's existing player is not imported or exposed as a public account.
-- Passwords use salted PBKDF2-HMAC-SHA256 with 600,000 iterations. Sessions use
+- The browser stretches passwords with salted PBKDF2-HMAC-SHA256 at 600,000
+  iterations; the Worker stores and checks a separate SHA-256 verifier. See
+  [AUTHENTICATION.md](AUTHENTICATION.md) for the protocol and its limits. Sessions use
   random 256-bit tokens; only their SHA-256 hashes are stored in D1. Cookies are
   Secure, HttpOnly and SameSite=Strict. Writes require the same Origin and a
   bounded JSON body. Login attempts are throttled before hashing.
@@ -111,16 +113,20 @@ The approved version is frozen in the private GitHub repository
 [mooserini/red-door](https://github.com/mooserini/red-door), tagged
 `freeze-2026-09-07`. Deployment preparation follows in a separate commit.
 
-The dedicated remote D1 schema and R2 assets are staged. The production Worker
-has not been attached to the live domain: Cloudflare rejected its CPU allowance
-on Workers Free. Workers Paid requires Tom's approval before purchase. The
-original live site and its existing bucket remain unchanged.
+The game is live at [getadongle.com](https://www.getadongle.com/index.html) on the
+existing Workers Free account. Browser-side password stretching replaced the
+server KDF; no paid subscription was purchased. The original public R2 bucket
+remains intact behind a Worker overlay, with unrelated paths passed through.
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for the exact resources, reviewed routes,
-remaining hosted checks, and rollback procedure. `wrangler.jsonc` remains the
-local development configuration; `wrangler.production.jsonc` is the explicit
-production configuration. The production wrapper passes unrelated site paths
-through to the original origin.
+[hosted-verification.json](hosted-verification.json) records a hosted disposable
+caller registering, moving, logging out, and returning to the same save.
+[launch-verification.json](launch-verification.json) records the deployed version,
+route IDs, static hashes, and unchanged shared avatar on both original hosts.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for resources, deployment, and rollback.
+`wrangler.jsonc` remains local; `wrangler.production.jsonc` is production.
+The adaptive browser-model storytelling discussed with Tom is not implemented
+in this release. The current game uses the frozen authored rules and scenes.
 
 Cloudflare references consulted:
 - https://developers.cloudflare.com/d1/worker-api/d1-database/
