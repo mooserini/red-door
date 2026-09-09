@@ -19,7 +19,7 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
     credentialsForm.hidden = true;
   }
   let active = false, busy = false, step = 'menu', handle = '', password = '', registering = false;
-  let world = null, pending = null;
+  let world = null, pending = null, quoted = null;
   const secret = () => step === 'password' || step === 'confirm';
   const prompt = () => ({ menu: '[L] Log in  [N] New caller  [Q] Return > ', handle: 'Handle > ',
     password: 'Password > ', confirm: 'Again > ', game: 'red-door > ' })[step];
@@ -67,14 +67,14 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
     await writer.write([
       { text: PLACES[state.location] || state.location, style: 'magenta' },
       state.last_scene, '',
-      `${state.name}  |  Health: ${state.health}  |  Inventory: ${state.inventory.join(', ') || 'empty'}`,
+      `${state.name}  |  Health: ${state.health}  |  Copper: ${state.copper ?? 0}  |  Inventory: ${state.inventory.join(', ') || 'empty'}`,
       { text: `Saved. Revision ${world.revision}.`, style: 'dim' }, ''
     ]);
-    if (state.location === 'tavern') await writer.write([{ text: 'TALK to Ara, or TALK <your words>. Optional local dialogue; never saved. TALK OFF uses scripted lines.', style: 'dim' }]);
+    if (state.location === 'tavern') await writer.write([{ text: 'TALK <your words> to Ara. Dialogue is temporary. BUY accepts the displayed offer and saves the purchase. TALK OFF uses scripted lines.', style: 'dim' }]);
   }
   async function open() {
     if (active) return;
-    active = true; busy = true; step = 'menu'; pending = null;
+    active = true; busy = true; step = 'menu'; pending = null; quoted = null;
     clearCredentials(); commandInput.value = ''; password = ''; handle = '';
     romBtn.classList.add('hide'); mobilePrompt.classList.add('hide');
     screen.classList.add('door-screen');
@@ -97,7 +97,7 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
     busy = false; controls();
   }
   async function leave() {
-    barkeep.reset();
+    barkeep.reset(); quoted = null;
     password = ''; handle = ''; input.value = ''; pending = null;
     active = false; busy = false; world = null;
     writer.clear(); screen.classList.remove('door-screen');
@@ -148,20 +148,35 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
           await writer.write(['tavern / woods / explore / search / rest / drink',
             'talk [words] - chat with Ara at the tavern; not saved',
             'talk off / on / reset - scripted only / local model / forget conversation',
+            'buy - pay the exact displayed copper price; item and balance are saved',
+            'cancel - discard the displayed offer without spending',
             'status  - read your saved character', 'retry   - confirm an interrupted move',
             'leave   - return to the Mirror', 'logout  - end this login and return', '']); return;
         }
         if (cmd === 'status' || cmd === 'reconnect') {
           // Confirm the pending request before fetching newer state. It may already have committed.
           if (pending) await sendPending();
-          const result = await api('/api/world'); world = result.world; await showWorld(); return;
+          const result = await api('/api/world'); world = result.world;
+          if (quoted && quoted.revision !== world.revision) quoted = null;
+          await showWorld();
+          if (quoted) await showOffer();
+          return;
         }
         if (cmd === 'retry') {
           if (!pending) { await writer.write(['No unconfirmed move.']); return; }
           await sendPending(); return;
         }
         if (pending) { await writer.write(['RETRY your unconfirmed move before making another.']); return; }
+        if (cmd === 'cancel') { quoted = null; await writer.write(['Offer discarded. Nothing was spent.']); return; }
+        if (cmd === 'buy') {
+          if (!quoted || quoted.revision !== world.revision || quoted.expires_at * 1000 <= Date.now()) {
+            quoted = null; await writer.write(['Ask Ara for a fresh offer first. Nothing was spent.']); return;
+          }
+          pending = { request_id: crypto.randomUUID(), expected_revision: world.revision, command: `buy ${quoted.id}` };
+          await sendPending(); return;
+        }
         if (/^talk(?:\s|$)/i.test(value)) {
+          quoted = null;
           const words = value.slice(4).trim();
           if (['off', 'on', 'reset'].includes(words.toLowerCase())) {
             if (words.toLowerCase() === 'reset') barkeep.reset();
@@ -177,13 +192,18 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
           const reasons = { off: 'local dialogue off', unavailable: 'local model unavailable', 'not-ready': 'model not ready; no download started', timeout: 'local model took too long', failed: 'local response unavailable', location: 'visit the tavern', busy: 'local model busy' };
           await writer.write([{ text: reply.source === 'local' ? 'ARA / LOCAL AI / NOT SAVED'
             : `ARA / SCRIPTED / NOT SAVED (${reasons[reply.reason] || 'fallback'})`, style: 'magenta' }, reply.text, '']);
+          if (reply.offer) {
+            const result = await api('/api/tavern-offers', { ...reply.offer, expected_revision: world.revision });
+            quoted = result.offer;
+            await showOffer();
+          }
           return;
         }
         pending = { request_id: crypto.randomUUID(), expected_revision: world.revision, command: cmd };
         await sendPending();
       }
     } catch (error) {
-      if (error.status === 401) { barkeep.reset(); step = 'menu'; world = null; pending = null; }
+      if (error.status === 401) { barkeep.reset(); step = 'menu'; world = null; pending = null; quoted = null; }
       await writer.write([{ text: error.message, style: 'danger' }]);
       if (pending) await writer.write(['The move may have saved. Type RETRY to confirm it.']);
     } finally {
@@ -204,15 +224,20 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
       clearCredentials(); step = 'menu'; handle = ''; throw error;
     }
   }
+  async function showOffer() {
+    await writer.write([{ text: `OFFER: ${quoted.item} — ${quoted.price} copper. Your purse: ${world.state.copper ?? 0} copper.`, style: 'magenta' },
+      'Type BUY to accept this price, or CANCEL. Valid for 10 minutes or until your next move or conversation turn.', '']);
+  }
   async function sendPending() {
     try {
       const result = await api('/api/commands', pending);
+      const bought = pending.command.startsWith('buy ');
       const travel=['tavern','home','woods','forest','explore','deeper'].includes(pending.command);
       const moved=world && result.world.state.location!==world.state.location;
-      if (moved) barkeep.reset();
+      if (moved || bought) barkeep.reset();
       // Clear only once travel is acknowledged. Failed moves keep the current scene.
       if(travel || moved) writer.clear();
-      world = result.world; pending = null; await showWorld();
+      world = result.world; pending = null; quoted = null; await showWorld();
     } catch (error) {
       // These statuses explicitly reject the move; network/5xx remain retryable.
       if ([400, 409, 401, 403, 413, 415].includes(error.status)) pending = null;

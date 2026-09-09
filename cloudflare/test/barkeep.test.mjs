@@ -11,7 +11,7 @@ function model() {
     create: async options => {
       calls.push(['create', options]);
       const session = { destroyed: false, prompt: async (text, options) => {
-        calls.push(['prompt', text, options]); return 'Ara smiles. "The rain has overstayed its welcome."';
+        calls.push(['prompt', text, options]); return JSON.stringify({ text: 'Ara smiles.', offer: null });
       }, destroy() { this.destroyed = true; } };
       sessions.push(session); return session;
     }
@@ -38,9 +38,9 @@ test('each turn explicitly attributes current inventory to the player despite di
   await narrator.talk({ ...state, inventory: [] }, 'Do I still have a coin?');
   const facts = m.calls.filter(c => c[0] === 'prompt').map(c => JSON.parse(c[1].split('\n')[0].slice('Scene facts: '.length)));
   assert.deepEqual(facts, [
-    { location: 'Old Tavern', player: { inventory: ['tarnished coin'] } },
-    { location: 'Old Tavern', player: { inventory: ['lost shoe'] } },
-    { location: 'Old Tavern', player: { inventory: [] } }
+    { location: 'Old Tavern', player: { copper: 0, inventory: ['tarnished coin'] } },
+    { location: 'Old Tavern', player: { copper: 0, inventory: ['lost shoe'] } },
+    { location: 'Old Tavern', player: { copper: 0, inventory: [] } }
   ]);
   const instructions = m.calls.find(c => c[0] === 'create')[1].initialPrompts[0].content;
   assert.match(instructions, /owned and carried by the player, not Ara/);
@@ -62,6 +62,20 @@ test('unsupported, downloadable, downloading, disabled and away-from-tavern path
   narrator.setEnabled(true);
   assert.equal((await narrator.talk({ ...state, location: 'woods' })).reason, 'location');
   assert.equal(m.calls.length, 0);
+});
+
+test('structured offers are bounded proposals and never mutate the purse', async () => {
+  for (const offer of [{ item: 'Orchard mist', price: 4 }, { item: 'Free money', price: -4 }, { item: '<script>', price: 2 }, { item: 'Mist', price: 1.5 }]) {
+    const m = model(), create = m.api.create;
+    m.api.create = async options => { const s = await create(options); s.prompt = async () => JSON.stringify({ text: 'An offer for you.', offer }); return s; };
+    const narrator = createBarkeep({ getModel: () => m.api });
+    const saved = { ...state, copper: 20 };
+    const reply = await narrator.talk(saved, 'Offer me a drink.');
+    assert.equal(saved.copper, 20);
+    if (offer.price === 4) { assert.equal(reply.source, 'local'); assert.deepEqual(reply.offer, offer); }
+    else { assert.equal(reply.source, 'scripted'); assert.equal(reply.offer, undefined); }
+    narrator.reset();
+  }
 });
 
 test('a late model creation after timeout is destroyed, and a later attempt can recover', async () => {
@@ -101,7 +115,7 @@ test('reset during generation suppresses stale output and destroys its session',
   assert.equal((await reply).source, 'scripted'); assert.equal(m.sessions[0].destroyed, true);
 });
 
-test('TALK stays entirely in the client; normal moves still use the existing save API', async () => {
+test('chat has no save requests; generated offers require explicit BUY before sending a purchase', async () => {
   const originals = Object.fromEntries(['document', 'window', 'matchMedia', 'fetch', 'LanguageModel'].map(k => [k, globalThis[k]]));
   const node = () => ({ value: '', classList: { add() {}, remove() {}, toggle() {} }, children: [],
     append(...items) { this.children.push(...items); }, replaceChildren() { this.children = []; },
@@ -114,6 +128,7 @@ test('TALK stays entirely in the client; normal moves still use the existing sav
     globalThis.LanguageModel = m.api;
     globalThis.fetch = async (path, options) => {
       calls.push([path, options]);
+      if (path === '/api/tavern-offers') return Response.json({ offer: { id: 'test-offer', item: 'Pear cordial', price: 3, revision: 1, expires_at: Math.floor(Date.now()/1000)+600 } });
       return Response.json({ handle: 'Example', world: { revision: calls.length, state: { ...state, health: 100, last_scene: 'At the bar.' } } });
     };
     const screen = node();
@@ -127,6 +142,18 @@ test('TALK stays entirely in the client; normal moves still use the existing sav
     await door.submit('drink');
     assert.equal(calls[0][0], '/api/commands');
     assert.equal(JSON.parse(calls[0][1].body).command, 'drink');
+    const create = m.api.create;
+    m.api.create = async options => { const s = await create(options); s.prompt = async () => JSON.stringify({ text: 'May I offer you a cordial?', offer: { item: 'Pear cordial', price: 3 } }); return s; };
+    calls.length = 0;
+    await door.submit('talk What can I buy?');
+    assert.deepEqual(calls.map(c => c[0]), ['/api/tavern-offers']);
+    assert.equal(JSON.parse(calls[0][1].body).price, 3);
+    await door.submit('buy');
+    assert.equal(calls[1][0], '/api/commands');
+    assert.equal(JSON.parse(calls[1][1].body).command, 'buy test-offer');
+    const count = calls.length;
+    await door.submit('buy');
+    assert.equal(calls.length, count, 'a second BUY without another offer must not send a command');
     await door.submit('leave');
   } finally {
     for (const [key, value] of Object.entries(originals)) { if (value === undefined) delete globalThis[key]; else globalThis[key] = value; }

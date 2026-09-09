@@ -3,9 +3,22 @@ export interface State {
   location: string;
   health: number;
   inventory: string[];
+  copper?: number;
   flags: string[];
   visits: number;
   last_scene: string;
+}
+
+export function purchase(current: State, item: string, price: number): State {
+  const balance = current.copper ?? 0;
+  if (current.location !== 'tavern') throw new Error('Return to the tavern before buying.');
+  if (!Number.isSafeInteger(balance) || balance < price) throw new Error('Not enough copper. Nothing was spent.');
+  if (current.inventory.length >= 40) throw new Error('Your pack is full. Nothing was spent.');
+  const state = structuredClone(current);
+  state.copper = balance - price;
+  state.inventory.push(item);
+  state.last_scene = `Ara hands you ${item}. Paid ${price} copper. Your purse holds ${state.copper} copper.`;
+  return state;
 }
 
 const TAVERN = 'Ara wipes a glass that remembers rain. Narm is arguing with the fire again.';

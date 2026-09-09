@@ -1,5 +1,5 @@
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
-import { advance, initialState } from './game';
+import { advance, initialState, purchase } from './game';
 
 const COOKIE = '__Host-reddoor';
 const SESSION_SECONDS = 60 * 60 * 24 * 7;
@@ -9,6 +9,7 @@ const verifier = (salt: string, key: string) => sha(`reddoor-login-v1:${salt}:${
 type WorldRow = { state_json: string; revision: number; receipt_hash: string };
 type ReceiptRow = WorldRow & { request_id: string; command: string; expected_revision: number; created_at: number };
 type AccountRow = { id: string; handle: string; password_hash: string; password_salt: string };
+type OfferRow = { id: string; item: string; price: number; revision: number; expires_at: number };
 class HttpError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
@@ -137,6 +138,25 @@ async function login(request: Request, env: Env, data: Record<string, unknown>, 
   return json({ handle: account.handle, world: worldJSON(world) }, register ? 201 : 200, { 'Set-Cookie': cookie(token) });
 }
 
+async function offer(request: Request, env: Env, data: Record<string, unknown>) {
+  const account = await currentAccount(request, env);
+  const { item, price, expected_revision: revision } = data;
+  if (typeof item !== 'string' || item !== item.trim() || !/^[\p{L}\p{M}\p{N} '\u2019-]{2,60}$/u.test(item) ||
+    typeof price !== 'number' || !Number.isSafeInteger(price) || price < 1 || price > 20 ||
+    typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 0)
+    throw new HttpError(400, 'Ara needs a named offer priced at 1–20 whole copper. Nothing was spent.');
+  const world = await env.DB.prepare('SELECT state_json, revision FROM worlds WHERE account_id = ?')
+    .bind(account.id).first<WorldRow>();
+  if (!world || world.revision !== revision) throw new HttpError(409, 'Read STATUS before asking for a fresh offer.');
+  if (JSON.parse(world.state_json).location !== 'tavern') throw new HttpError(400, 'Visit the tavern for an offer.');
+  const quoted = { id: crypto.randomUUID(), item, price, revision, expires_at: seconds() + 600 };
+  await env.DB.prepare(`INSERT INTO tavern_offers(account_id, id, item, price, revision, expires_at) VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(account_id) DO UPDATE SET id=excluded.id, item=excluded.item, price=excluded.price,
+    revision=excluded.revision, expires_at=excluded.expires_at`)
+    .bind(account.id, quoted.id, item, price, revision, quoted.expires_at).run();
+  return json({ offer: quoted });
+}
+
 async function command(request: Request, env: Env, data: Record<string, unknown>) {
   const account = await currentAccount(request, env);
   if ('state' in data || 'account_id' in data) throw new HttpError(400, 'Send a command; the world keeps its own ledger.');
@@ -160,8 +180,17 @@ async function command(request: Request, env: Env, data: Record<string, unknown>
   if (!world) throw new Error('missing_world');
   if (world.revision !== revision) throw new HttpError(409, 'Another session moved first. Read STATUS, then choose your next move.');
   let next;
-  try { next = advance(JSON.parse(world.state_json), cmd); }
-  catch { throw new HttpError(400, 'Try tavern, woods, explore, search, rest or drink.'); }
+  if (cmd.startsWith('buy ')) {
+    const quoted = await env.DB.prepare('SELECT id, item, price, revision, expires_at FROM tavern_offers WHERE account_id = ? AND id = ?')
+      .bind(account.id, cmd.slice(4)).first<OfferRow>();
+    if (!quoted || quoted.revision !== revision || quoted.expires_at <= seconds())
+      throw new HttpError(409, 'That offer is no longer current. Ask Ara for a fresh offer. Nothing was spent.');
+    try { next = purchase(JSON.parse(world.state_json), quoted.item, quoted.price); }
+    catch (error) { throw new HttpError(400, (error as Error).message); }
+  } else {
+    try { next = advance(JSON.parse(world.state_json), cmd); }
+    catch { throw new HttpError(400, 'Try tavern, woods, explore, search, rest or drink.'); }
+  }
   const state = JSON.stringify(next);
   const created = seconds();
   const receiptHash = sha(JSON.stringify([account.id, requestId, cmd, revision, state, world.receipt_hash, created]));
@@ -173,6 +202,8 @@ async function command(request: Request, env: Env, data: Record<string, unknown>
     // A concurrent identical retry returns the winning receipt, including its random outcome.
     const winner = await prior();
     if (winner) return replay(winner);
+    if (String(error).includes('offer_conflict'))
+      throw new HttpError(409, 'That offer changed. Ask Ara again. Nothing was spent.');
     if (String(error).includes('revision_conflict') || String(error).includes('UNIQUE'))
       throw new HttpError(409, 'Another session moved first. Read STATUS, then choose your next move.');
     throw error;
@@ -200,6 +231,7 @@ async function route(request: Request, env: Env): Promise<Response> {
       return json({ signed_out: true }, 200, { 'Set-Cookie': cookie('', true) });
     }
     if (url.pathname === '/api/commands') return command(request, env, data);
+    if (url.pathname === '/api/tavern-offers') return offer(request, env, data);
     throw new HttpError(404, 'Not found.');
   }
   if (request.method !== 'GET' && request.method !== 'HEAD') throw new HttpError(405, 'Method not allowed.');
@@ -237,7 +269,8 @@ export default {
   async scheduled(_event: ScheduledController, env: Env) {
     await env.DB.batch([
       env.DB.prepare('DELETE FROM sessions WHERE expires_at <= ?').bind(seconds()),
-      env.DB.prepare('DELETE FROM auth_limits WHERE expires_at <= ?').bind(seconds())
+      env.DB.prepare('DELETE FROM auth_limits WHERE expires_at <= ?').bind(seconds()),
+      env.DB.prepare('DELETE FROM tavern_offers WHERE expires_at <= ?').bind(seconds())
     ]);
   }
 } satisfies ExportedHandler<Env>;

@@ -15,8 +15,10 @@ before(async () => {
     env: { DB: { type: 'd1', name: 'test-red-door', id: 'test-red-door' }, STATIC: { type: 'r2', name: 'test-static' } }
   } }] });
   db = await mf.getD1Database('DB');
-  const sql = (await readFile('migrations/0001_red_door.sql', 'utf8')).replace(/--[^\n]*/g, '');
-  for (const statement of sql.split(/;\s*(?=CREATE|PRAGMA|$)/).filter(v => v.trim())) await db.prepare(statement).run();
+  for (const file of ['0001_red_door.sql', '0002_tavern_offers.sql']) {
+    const sql = (await readFile('migrations/' + file, 'utf8')).replace(/--[^\n]*/g, '');
+    for (const statement of sql.split(/;\s*(?=CREATE|PRAGMA|$)/).filter(v => v.trim())) await db.prepare(statement).run();
+  }
   const bucket = await mf.getR2Bucket('STATIC');
   await bucket.put('index.html', '<!doctype html><title>Mirror</title>', { httpMetadata: { contentType: 'text/html' } });
 });
@@ -120,4 +122,60 @@ test('frozen-preview accounts upgrade their verifier while retaining their saved
   assert.equal(back.status, 200); assert.deepEqual(back.data.world, saved.data.world);
   const upgraded = await db.prepare('SELECT password_hash FROM accounts WHERE id = ?').bind(a.id).first();
   assert.match(upgraded.password_hash, /^client-pbkdf2-sha256-600000-v1:/);
+});
+
+async function funded(handle) {
+  const a = await register(handle);
+  await db.prepare("UPDATE worlds SET state_json=json_set(state_json, '$.copper', 20) WHERE account_id=(SELECT id FROM accounts WHERE handle_key=?)").bind(handle.toLowerCase()).run();
+  return a;
+}
+const quote = (a, item='Whispering pear cider', price=3, revision=0) => request('/api/tavern-offers', {
+  cookie: a.cookie, data: { item, price, expected_revision: revision }
+});
+test('invented offer changes no balance; accepting spends once and persists across login', async () => {
+  const a = await funded('BuyerOne');
+  const q = await quote(a); assert.equal(q.status, 200);
+  assert.equal((await request('/api/world', { cookie: a.cookie })).data.world.state.copper, 20);
+  const purchase = move('buy ' + q.data.offer.id);
+  const results = await Promise.all(Array.from({length: 4}, () => request('/api/commands', {cookie:a.cookie, data:purchase})));
+  for (const r of results) { assert.equal(r.status, 200); assert.equal(r.data.world.state.copper, 17); assert.deepEqual(r.data.world.state.inventory, ['Whispering pear cider']); }
+  assert.equal((await request('/api/commands', { cookie:a.cookie, data:move(purchase.command,1) })).status,409);
+  const back = await request('/api/login', {data:{handle:'BuyerOne',password}});
+  assert.equal(back.data.world.state.copper,17);
+  assert.equal(back.data.world.revision,1);
+});
+test('invalid prices, forged offers and other callers offers cannot spend or credit money', async () => {
+  const a=await funded('BuyerTwo'), b=await funded('BuyerThree');
+  for(const price of [-1,0,1.5,21,'3',null]) assert.equal((await quote(a,'Mist broth',price)).status,400);
+  assert.equal((await quote(a,'<script>')).status,400);
+  const q=await quote(a);
+  assert.equal((await request('/api/commands',{cookie:b.cookie,data:move('buy '+q.data.offer.id)})).status,409);
+  assert.equal((await request('/api/commands',{cookie:a.cookie,data:move('buy '+crypto.randomUUID())})).status,409);
+  const valid=await request('/api/commands',{cookie:a.cookie,data:{...move('buy '+q.data.offer.id),price:-100,item:'Free money'}});
+  assert.equal(valid.status,200); assert.equal(valid.data.world.state.copper,17);
+  assert.deepEqual(valid.data.world.state.inventory,['Whispering pear cider']);
+});
+test('replacement, expiration, movement and insufficient funds reject a purchase without a debit', async () => {
+  const a=await funded('BuyerFour');
+  const old=await quote(a), fresh=await quote(a,'Juniper cordial',20);
+  assert.equal((await request('/api/commands',{cookie:a.cookie,data:move('buy '+old.data.offer.id)})).status,409);
+  const bought=await request('/api/commands',{cookie:a.cookie,data:move('buy '+fresh.data.offer.id)});
+  assert.equal(bought.data.world.state.copper,0);
+  const poor=await quote(a,'Mist broth',1,1);
+  const denied=await request('/api/commands',{cookie:a.cookie,data:move('buy '+poor.data.offer.id,1)});
+  assert.equal(denied.status,400);
+  assert.equal((await request('/api/world',{cookie:a.cookie})).data.world.revision,1);
+  await db.prepare('UPDATE tavern_offers SET expires_at=0 WHERE id=?').bind(poor.data.offer.id).run();
+  assert.equal((await request('/api/commands',{cookie:a.cookie,data:move('buy '+poor.data.offer.id,1)})).status,409);
+  const stale=await quote(a,'Nettle soup',1,1);
+  await request('/api/commands',{cookie:a.cookie,data:move('woods',1)});
+  assert.equal((await request('/api/commands',{cookie:a.cookie,data:move('buy '+stale.data.offer.id,2)})).status,409);
+  assert.equal((await quote(a,'Nettle soup',1,2)).status,400);
+});
+test('two different purchase requests racing cannot double-spend', async () => {
+  const a=await funded('BuyerRace'), q=await quote(a,'Hearth tonic',4);
+  const results=await Promise.all([1,2].map(()=>request('/api/commands',{cookie:a.cookie,data:move('buy '+q.data.offer.id)})));
+  assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
+  const saved=await request('/api/world',{cookie:a.cookie});
+  assert.equal(saved.data.world.state.copper,16); assert.equal(saved.data.world.state.inventory.length,1);
 });

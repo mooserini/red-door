@@ -44,16 +44,39 @@ commands. The model is asked to stay friendly and respect game facts; that promp
 is not a guarantee of safe or accurate prose.
 
 Dialogue commands are handled before the save API and do not create game
-receipts. The narrator has no fetch, storage, or database access. It receives
-only a fixed tavern scene, allowlisted inventory labels, and the player's current
+receipts. A proposed item and price may create a short-lived server quote. The narrator has no fetch, storage, or database access. It receives
+only a fixed tavern scene, bounded inventory labels, copper balance, and the player's current
 words, not account identity, authentication material, health, or save metadata.
 The model's prose cannot alter inventory, health, quests, or saves. Conversation
 text remains in the page and model session only; there is no application storage,
 analytics, or submission of that text. Browser/OS memory management is outside
 that application-level guarantee. Normal game actions continue saving as before.
 
-The experiment is dialogue only. Shared discoveries, durable AI memory, new
-locations, and autonomous world expansion are not implemented.
+Ara can now return a structured offer alongside her dialogue. Items are invented
+by the model, not selected from a catalog. The browser submits only the item name
+and integer price to `/api/tavern-offers`; the server validates a 1–20 copper
+range, binds the quote to the signed-in caller and current world revision, and
+keeps at most one pending offer per caller. Offers expire after ten minutes.
+No transcript is submitted. Invalid/unavailable model output creates no offer.
+
+`buy` explicitly accepts the displayed server quote. `/api/commands` reads that
+quote (never a client-supplied replacement price), verifies balance and location,
+then saves the debit and purchased inventory label together through the existing
+receipt transaction. A trigger consumes the quote in the same transaction.
+Retries cannot charge twice. A stale, replaced, expired, or unaffordable offer
+changes nothing. `cancel`, a new conversation turn, or a move discards the local
+offer; another quote replaces it on the server. Successful purchases clear the
+model context so the next turn starts from the saved balance and possessions.
+Purchased items are inventory labels without inferred healing or quest powers.
+
+For this experiment, Moose receives a one-time operator-recorded 20-copper purse.
+Existing other callers default to zero; there is no public refill command. The
+old tarnished coin remains a separate inventory object, not a currency balance.
+These are fantasy tavern prices, not claims about historical purchasing power.
+Client-side AI proposals are untrusted and bounded, not a cheat-proof market.
+
+Shared discoveries, durable AI memory, new locations, and autonomous world
+expansion are not implemented.
 
 API reference: https://developer.chrome.com/docs/ai/prompt-api
 
@@ -164,8 +187,8 @@ The game's production configuration owns only `getadongle.com/*`. The separate
 portfolio owns `www.getadongle.com/*` and forwards the playable `/red-door`
 entrance and game requests through its `RED_DOOR` service binding.
 The temporary barkeep experiment adds optional browser-model dialogue. The
-game's rules and persistent scenes remain authored; model-driven world expansion
-and persistence are not implemented.
+game's rules remain authoritative; confirmed purchases persist, while dialogue
+and model-driven world expansion do not.
 
 Cloudflare references consulted:
 - https://developers.cloudflare.com/d1/worker-api/d1-database/

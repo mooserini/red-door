@@ -145,3 +145,31 @@ within one dialogue session. The hosted asset matched the local file byte for
 byte. SHA-256: `ba2c98f9fce2eb38400884cac1aa97718b398a9ec5c58ee145834b75377c7504`. These tests verify the prompt/data contract, not
 a guarantee that model wording can never misattribute an item. No game save
 was modified, and conversation mode was not added.
+
+## Copper purchase experiment — 2026-09-08 EDT
+
+- Applied `0002_tavern_offers.sql` to the dedicated Red Door D1 database.
+- Deployed Red Door Worker `e2ada1e8-5c1b-481f-8434-5c0938aa60ca`. The
+  existing portfolio service binding handles the new API path without changes.
+- Uploaded only `barkeep.js` and `door.js` after the compatible Worker deployment.
+- The hosted assets matched the local files byte for byte; the public quote
+  endpoint returned 401 without a login.
+- Type checks, both build variants, and all 26 tests passed. Tests cover invalid
+  prices, cross-account and stale offers, insufficient funds, concurrent buyers,
+  idempotent retries, purchase persistence, and explicit BUY in the client.
+- Real Chrome/local Worker/local D1 verification: Nano invented an offer priced
+  at 8 copper. BUY saved its inventory label and reduced a disposable caller's
+  balance from 20 to 12 at revision 1. The test tab and local server were closed.
+- Moose's authorized one-time 20-copper purse was recorded through a normal
+  chained receipt at revision 6, command `operator:test-purse-20-v1`. Verified
+  the balance was 20 afterward, with the tarnished coin still present. No
+  production purchase was made during verification. Before/after snapshots and
+  the exact preload statement are under ignored `backups/pre-copper-2026-09-08/`.
+- This grant has no public refill endpoint and does not grant copper to other
+  accounts. Conversation remains temporary; quotes contain item/price only,
+  and completed purchases persist.
+
+Asset hashes (SHA-256):
+
+- `barkeep.js`: `6755ac54dca99680ce81a7816048fabef927d95f1ab242439b1b481ee227cdc2`.
+- `door.js`: `9b97e28cf731dd01786f9285d4d7908c0f3fd82e8c493f38609970352df3125d`.
