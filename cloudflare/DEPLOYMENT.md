@@ -99,6 +99,34 @@ accounts and saves survive rollback.
 expression because the hosted migration parser rejected its nested END syntax.
 The remotely applied schema retains transactional revision guards/checkpoints.
 
+## Barkeep experiment — 2026-09-08 EDT
+
+Optional local Chrome dialogue was deployed with a scripted fallback. Talking
+is intercepted before the game command/save request path. No migrations were
+applied, and no production account or save was changed during verification.
+
+- Red Door Worker: `7724021e-9f30-4cec-8964-23266a66bae0`.
+- Portfolio proxy Worker: `1a024f66-3c5b-4342-b52a-7dbad9c5eb0d`.
+- Only `barkeep.js` and `door.js` were uploaded to R2; allowlists were deployed
+  before uploading the importing `door.js`.
+- Both hosted `www` assets matched local files byte for byte. The apex
+  `/barkeep.js` endpoint redirected to the verified `www` asset with HTTP 301.
+- SHA-256 `barkeep.js`: `3db20baccebd233a15156cf0c29227690121083a77ec8afd66f0501601de67cc`.
+- SHA-256 `door.js`: `fc578223a851192532291a82175987011730fe939fc059209f1731c0e4b03a4e`.
+- Game type checks and all 20 tests passed; portfolio lint/worker checks and
+  all 17 tests passed. Focused dialogue and proxy tests also passed after the
+  final lifecycle and route assertions.
+- A temporary localhost fixture loaded the actual module in the user's Chrome
+  with synthetic tavern state. The first attempt hit the 12-second fallback;
+  the second returned local model dialogue. Explicit scripted mode worked.
+  The fixture tab and server were closed afterward. No dialogue is included
+  in this deployment record.
+- Integration tests verified that talk/on/off/reset made no API/save requests,
+  while an ordinary game command still used the normal command API.
+
+Live asset delivery and local Chrome inference were verified separately. A
+production character was not moved to the tavern for an end-to-end play test.
+
 ## References
 
 - https://developers.cloudflare.com/workers/platform/limits/
