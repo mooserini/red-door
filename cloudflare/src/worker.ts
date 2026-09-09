@@ -205,7 +205,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'GET' && request.method !== 'HEAD') throw new HttpError(405, 'Method not allowed.');
   const key = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
   // Serve only this release's known public surface; no bucket listing or arbitrary keys.
-  if (!['index.html', 'mirror.css', 'mirror.js', 'door.js', 'pacing.js', 'auth.js',
+  if (!['index.html', 'mirror.css', 'mirror.js', 'door.js', 'pacing.js', 'auth.js', 'barkeep.js',
     'assets/projects-core.v1.js', 'assets/projects.json', 'assets/fonts/Ac437_ATT_PC6300.ttf', 'assets/linktree-qr-400.png'].includes(key))
     throw new HttpError(404, 'Not found.');
   const object = await env.STATIC.get(key);

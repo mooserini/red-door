@@ -27,6 +27,36 @@ Base44 browser-local game implementation is not used.
 - Save confirmation comes from the server before it is displayed. Closing the
   page while text is arriving does not undo an acknowledged action.
 
+## Temporary barkeep dialogue experiment
+
+At the tavern, type `talk` or `talk <your words>` (up to 240 characters).
+Ara uses Chrome's built-in Prompt API only when it reports an already available
+English text model. Unsupported browsers, models needing a download, errors,
+blocked responses, and a 12-second timeout use rotating authored lines instead.
+There is no automatic model download, paid API, or cloud inference fallback.
+
+`talk off` uses only scripted lines. `talk on` enables the available local model
+again. `talk reset` destroys the temporary model conversation. Leaving the game,
+changing location, or unloading the page destroys it too; it also restarts after
+six successful replies to bound context. The terminal labels local AI and
+scripted replies separately. Output uses text nodes, never HTML or executable
+commands. The model is asked to stay friendly and respect game facts; that prompt
+is not a guarantee of safe or accurate prose.
+
+Dialogue commands are handled before the save API and do not create game
+receipts. The narrator has no fetch, storage, or database access. It receives
+only a fixed tavern scene, allowlisted inventory labels, and the player's current
+words, not account identity, authentication material, health, or save metadata.
+The model's prose cannot alter inventory, health, quests, or saves. Conversation
+text remains in the page and model session only; there is no application storage,
+analytics, or submission of that text. Browser/OS memory management is outside
+that application-level guarantee. Normal game actions continue saving as before.
+
+The experiment is dialogue only. Shared discoveries, durable AI memory, new
+locations, and autonomous world expansion are not implemented.
+
+API reference: https://developer.chrome.com/docs/ai/prompt-api
+
 ## Pacing
 
 The Mirror's regular diagnostics retain their original 430 ms timing, and its
@@ -133,8 +163,9 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for resources, deployment, and rollback.
 The game's production configuration owns only `getadongle.com/*`. The separate
 portfolio owns `www.getadongle.com/*` and forwards the playable `/red-door`
 entrance and game requests through its `RED_DOOR` service binding.
-The adaptive browser-model storytelling discussed with Tom is not implemented
-in this release. The current game uses the frozen authored rules and scenes.
+The temporary barkeep experiment adds optional browser-model dialogue. The
+game's rules and persistent scenes remain authored; model-driven world expansion
+and persistence are not implemented.
 
 Cloudflare references consulted:
 - https://developers.cloudflare.com/d1/worker-api/d1-database/
