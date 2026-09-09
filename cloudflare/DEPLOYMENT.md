@@ -132,3 +132,16 @@ production character was not moved to the tavern for an end-to-end play test.
 - https://developers.cloudflare.com/workers/platform/limits/
 - https://developers.cloudflare.com/workers/configuration/routing/routes/
 - https://developers.cloudflare.com/r2/buckets/public-buckets/
+
+## Inventory ownership clarification — 2026-09-08 EDT
+
+Only the R2 `barkeep.js` asset was updated. Every turn now identifies selected
+inventory under `player.inventory`; the system prompt makes ownership fixed,
+uses player-facing possessives, and distinguishes offers from completed
+transfers. Invented specials, ingredients, and proposed prices remain allowed.
+
+Both build checks and all 21 tests passed, including current-inventory updates
+within one dialogue session. The hosted asset matched the local file byte for
+byte. SHA-256: `ba2c98f9fce2eb38400884cac1aa97718b398a9ec5c58ee145834b75377c7504`. These tests verify the prompt/data contract, not
+a guarantee that model wording can never misattribute an item. No game save
+was modified, and conversation mode was not added.

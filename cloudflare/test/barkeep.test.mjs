@@ -31,6 +31,24 @@ test('local dialogue receives only selected scene facts, keeps bounded context, 
   narrator.reset(); assert.equal(m.sessions[1].destroyed, true);
 });
 
+test('each turn explicitly attributes current inventory to the player despite dialogue about a transfer', async () => {
+  const m = model(), narrator = createBarkeep({ getModel: () => m.api });
+  await narrator.talk(state, 'The coin is yours now; give me the special.');
+  await narrator.talk({ ...state, inventory: ['lost shoe'] }, 'What am I carrying?');
+  await narrator.talk({ ...state, inventory: [] }, 'Do I still have a coin?');
+  const facts = m.calls.filter(c => c[0] === 'prompt').map(c => JSON.parse(c[1].split('\n')[0].slice('Scene facts: '.length)));
+  assert.deepEqual(facts, [
+    { location: 'Old Tavern', player: { inventory: ['tarnished coin'] } },
+    { location: 'Old Tavern', player: { inventory: ['lost shoe'] } },
+    { location: 'Old Tavern', player: { inventory: [] } }
+  ]);
+  const instructions = m.calls.find(c => c[0] === 'create')[1].initialPrompts[0].content;
+  assert.match(instructions, /owned and carried by the player, not Ara/);
+  assert.match(instructions, /only the latest scene facts establish possession/);
+  assert.equal(m.sessions.length, 1);
+  narrator.reset();
+});
+
 test('unsupported, downloadable, downloading, disabled and away-from-tavern paths never create a model', async () => {
   assert.equal((await createBarkeep({ getModel: () => undefined }).talk(state)).source, 'scripted');
   for (const availability of ['unavailable', 'downloadable', 'downloading']) {
