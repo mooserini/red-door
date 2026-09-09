@@ -116,7 +116,7 @@ The approved version is frozen in the private GitHub repository
 [mooserini/red-door](https://github.com/mooserini/red-door), tagged
 `freeze-2026-09-07`. Deployment preparation follows in a separate commit.
 
-The game is live at [getadongle.com](https://www.getadongle.com/index.html) on the
+The game is live at [Red Door](https://www.getadongle.com/red-door) on the
 existing Workers Free account. Browser-side password stretching replaced the
 server KDF; no paid subscription was purchased. The original public R2 bucket
 remains intact behind a Worker overlay, with unrelated paths passed through.
@@ -130,6 +130,9 @@ the subsequent input-field fix, its Chrome checks, and updated deployed hashes.
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for resources, deployment, and rollback.
 `wrangler.jsonc` remains local; `wrangler.production.jsonc` is production.
+The game's production configuration owns only `getadongle.com/*`. The separate
+portfolio owns `www.getadongle.com/*` and forwards the playable `/red-door`
+entrance and game requests through its `RED_DOOR` service binding.
 The adaptive browser-model storytelling discussed with Tom is not implemented
 in this release. The current game uses the frozen authored rules and scenes.
 

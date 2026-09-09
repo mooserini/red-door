@@ -1,5 +1,12 @@
 # Red Door: terminal outside the world
 
+**Playable hosted build:** [Red Door BBS](https://www.getadongle.com/red-door).
+The Cloudflare game, handle/password authentication, D1 saves, and deployment
+instructions live in [cloudflare/README.md](cloudflare/README.md). Source is
+maintained in the private [mooserini/red-door](https://github.com/mooserini/red-door)
+repository. The rest of this document describes the earlier independent local
+Python/SQLite proof, not the hosted game's current deployment status.
+
 Google hterm runs in the browser. Red Door's Python game engine and SQLite ledger
 run on this Mac, outside the browser session. Both the terminal and the graphical
 page send commands to the same server-owned world. This is a local single-user

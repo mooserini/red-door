@@ -8,7 +8,6 @@
   "workers_dev": false,
   "preview_urls": false,
   "routes": [
-    { "pattern": "www.getadongle.com/*", "zone_id": "4e2ee5bb4dee2ff2ddcced14e2e0d5e9" },
     { "pattern": "getadongle.com/*", "zone_id": "4e2ee5bb4dee2ff2ddcced14e2e0d5e9" }
   ],
   "triggers": { "crons": ["17 5 * * *"] },

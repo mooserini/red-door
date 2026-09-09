@@ -10,6 +10,9 @@ does not change any file in `public/` or the game rules.
 
 ## Live deployment on 2026-09-07
 
+This section records the original launch. For current route ownership, use the
+next section; the original two-route arrangement is no longer current.
+
 - Worker `red-door` on the existing **Workers Free** account. No plan purchase.
 - Version `a2821989-f25f-4970-b46a-4163ea68f00d`.
 - Dedicated D1 `red-door`: `9be6882b-1919-4c79-a96a-0143e635a06e`.
@@ -45,6 +48,23 @@ URLs remain disabled.
 
 ## Subsequent deployment
 
+Current route ownership after the portfolio migration:
+
+- `getadongle.com/*` belongs to `red-door`. This is the only route declared in
+  this repository's production configuration.
+- `www.getadongle.com/*` belongs to `resonant-mirror-portfolio`, maintained in
+  the separate `mooserini/resonant-mirror` repository. Do not add it back here.
+- The portfolio serves the playable entrance at
+  `https://www.getadongle.com/red-door` through its `RED_DOOR` service binding.
+  It delegates the game's `/api/*` and allowlisted static assets to `red-door`,
+  preserving same-origin game sessions. Portfolio authentication is separate.
+
+The dedicated D1 and R2 resources above remain the game's storage. A routing
+configuration correction does not require reapplying migrations or uploading
+unchanged game assets. Validate with `npm run check` and `npm test`; both local
+and production bundles are built by the test command. Deploy only when a hosted
+change is needed, using the production configuration below.
+
 From this directory:
 
 ```sh
@@ -63,10 +83,17 @@ passthrough again. Record the new version and hashes.
 
 ## Rollback
 
-Remove only the two route IDs in `launch-verification.json` that point to
-red-door from the zone's Workers Routes, and restore `routes: []` in production
-config. The untouched original R2 origin then serves the original site. Retain
-the game D1/R2 resources so saves and release files survive rollback.
+For a game-code regression, roll back the `red-door` Worker to a verified prior
+version while preserving its D1/R2 bindings and current apex-only route.
+Coordinate any incompatible frontend assets or schema changes separately.
+
+If removing the apex overlay entirely, inspect live route ownership and remove
+only `getadongle.com/*` when it points to `red-door`, then set `routes: []` here.
+Do not remove the portfolio's `www` route or use the original launch's two route
+IDs as a current deletion list. The portfolio's service binding still calls the
+game independently of its public route, so removing the apex overlay alone does
+not disable `/red-door` on the portfolio. Retain the game D1/R2 resources so
+accounts and saves survive rollback.
 
 `0001_red_door.sql` uses a trigger WHEN clause equivalent to the frozen CASE
 expression because the hosted migration parser rejected its nested END syntax.
