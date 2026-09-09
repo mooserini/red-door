@@ -9,7 +9,7 @@ const verifier = (salt: string, key: string) => sha(`reddoor-login-v1:${salt}:${
 type WorldRow = { state_json: string; revision: number; receipt_hash: string };
 type ReceiptRow = WorldRow & { request_id: string; command: string; expected_revision: number; created_at: number };
 type AccountRow = { id: string; handle: string; password_hash: string; password_salt: string };
-type OfferRow = { id: string; item: string; price: number; revision: number; expires_at: number };
+type OfferRow = { id: string; item: string; kind: 'food' | 'drink' | 'other'; price: number; revision: number; expires_at: number };
 class HttpError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
@@ -141,19 +141,21 @@ async function login(request: Request, env: Env, data: Record<string, unknown>, 
 async function offer(request: Request, env: Env, data: Record<string, unknown>) {
   const account = await currentAccount(request, env);
   const { item, price, expected_revision: revision } = data;
+  const kind = data.kind ?? 'other'; // Older clients can still complete an untyped offer.
   if (typeof item !== 'string' || item !== item.trim() || !/^[\p{L}\p{M}\p{N} '\u2019-]{2,60}$/u.test(item) ||
     typeof price !== 'number' || !Number.isSafeInteger(price) || price < 1 || price > 20 ||
-    typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 0)
+    typeof revision !== 'number' || !Number.isSafeInteger(revision) || revision < 0 ||
+    typeof kind !== 'string' || !['food', 'drink', 'other'].includes(kind))
     throw new HttpError(400, 'Ara needs a named offer priced at 1–20 whole copper. Nothing was spent.');
   const world = await env.DB.prepare('SELECT state_json, revision FROM worlds WHERE account_id = ?')
     .bind(account.id).first<WorldRow>();
   if (!world || world.revision !== revision) throw new HttpError(409, 'Read STATUS before asking for a fresh offer.');
   if (JSON.parse(world.state_json).location !== 'tavern') throw new HttpError(400, 'Visit the tavern for an offer.');
-  const quoted = { id: crypto.randomUUID(), item, price, revision, expires_at: seconds() + 600 };
-  await env.DB.prepare(`INSERT INTO tavern_offers(account_id, id, item, price, revision, expires_at) VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT(account_id) DO UPDATE SET id=excluded.id, item=excluded.item, price=excluded.price,
+  const quoted = { id: crypto.randomUUID(), item, price, kind, revision, expires_at: seconds() + 600 };
+  await env.DB.prepare(`INSERT INTO tavern_offers(account_id, id, item, price, kind, revision, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(account_id) DO UPDATE SET id=excluded.id, item=excluded.item, price=excluded.price, kind=excluded.kind,
     revision=excluded.revision, expires_at=excluded.expires_at`)
-    .bind(account.id, quoted.id, item, price, revision, quoted.expires_at).run();
+    .bind(account.id, quoted.id, item, price, kind, revision, quoted.expires_at).run();
   return json({ offer: quoted });
 }
 
@@ -181,15 +183,15 @@ async function command(request: Request, env: Env, data: Record<string, unknown>
   if (world.revision !== revision) throw new HttpError(409, 'Another session moved first. Read STATUS, then choose your next move.');
   let next;
   if (cmd.startsWith('buy ')) {
-    const quoted = await env.DB.prepare('SELECT id, item, price, revision, expires_at FROM tavern_offers WHERE account_id = ? AND id = ?')
+    const quoted = await env.DB.prepare('SELECT id, item, kind, price, revision, expires_at FROM tavern_offers WHERE account_id = ? AND id = ?')
       .bind(account.id, cmd.slice(4)).first<OfferRow>();
     if (!quoted || quoted.revision !== revision || quoted.expires_at <= seconds())
       throw new HttpError(409, 'That offer is no longer current. Ask Ara for a fresh offer. Nothing was spent.');
-    try { next = purchase(JSON.parse(world.state_json), quoted.item, quoted.price); }
+    try { next = purchase(JSON.parse(world.state_json), quoted.item, quoted.price, quoted.kind); }
     catch (error) { throw new HttpError(400, (error as Error).message); }
   } else {
     try { next = advance(JSON.parse(world.state_json), cmd); }
-    catch { throw new HttpError(400, 'Try tavern, woods, explore, search, rest or drink.'); }
+    catch (error) { throw new HttpError(400, (error as Error).message); }
   }
   const state = JSON.stringify(next);
   const created = seconds();

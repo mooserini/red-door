@@ -65,7 +65,7 @@ test('unsupported, downloadable, downloading, disabled and away-from-tavern path
 });
 
 test('structured offers are bounded proposals and never mutate the purse', async () => {
-  for (const offer of [{ item: 'Orchard mist', price: 4 }, { item: 'Free money', price: -4 }, { item: '<script>', price: 2 }, { item: 'Mist', price: 1.5 }]) {
+  for (const offer of [{ item: 'Orchard mist', kind: 'drink', price: 4 }, { item: 'Free money', price: -4 }, { item: '<script>', price: 2 }, { item: 'Mist', price: 1.5 }]) {
     const m = model(), create = m.api.create;
     m.api.create = async options => { const s = await create(options); s.prompt = async () => JSON.stringify({ text: 'An offer for you.', offer }); return s; };
     const narrator = createBarkeep({ getModel: () => m.api });
@@ -128,7 +128,7 @@ test('chat has no save requests; generated offers require explicit BUY before se
     globalThis.LanguageModel = m.api;
     globalThis.fetch = async (path, options) => {
       calls.push([path, options]);
-      if (path === '/api/tavern-offers') return Response.json({ offer: { id: 'test-offer', item: 'Pear cordial', price: 3, revision: 1, expires_at: Math.floor(Date.now()/1000)+600 } });
+      if (path === '/api/tavern-offers') return Response.json({ offer: { id: 'test-offer', item: 'Pear cordial', kind: 'drink', price: 3, revision: 1, expires_at: Math.floor(Date.now()/1000)+600 } });
       return Response.json({ handle: 'Example', world: { revision: calls.length, state: { ...state, health: 100, last_scene: 'At the bar.' } } });
     };
     const screen = node();
@@ -143,7 +143,7 @@ test('chat has no save requests; generated offers require explicit BUY before se
     assert.equal(calls[0][0], '/api/commands');
     assert.equal(JSON.parse(calls[0][1].body).command, 'drink');
     const create = m.api.create;
-    m.api.create = async options => { const s = await create(options); s.prompt = async () => JSON.stringify({ text: 'May I offer you a cordial?', offer: { item: 'Pear cordial', price: 3 } }); return s; };
+    m.api.create = async options => { const s = await create(options); s.prompt = async () => JSON.stringify({ text: 'May I offer you a cordial?', offer: { item: 'Pear cordial', kind: 'drink', price: 3 } }); return s; };
     calls.length = 0;
     await door.submit('talk What can I buy?');
     assert.deepEqual(calls.map(c => c[0]), ['/api/tavern-offers']);

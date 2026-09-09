@@ -15,9 +15,9 @@ before(async () => {
     env: { DB: { type: 'd1', name: 'test-red-door', id: 'test-red-door' }, STATIC: { type: 'r2', name: 'test-static' } }
   } }] });
   db = await mf.getD1Database('DB');
-  for (const file of ['0001_red_door.sql', '0002_tavern_offers.sql']) {
+  for (const file of ['0001_red_door.sql', '0002_tavern_offers.sql', '0003_item_types.sql']) {
     const sql = (await readFile('migrations/' + file, 'utf8')).replace(/--[^\n]*/g, '');
-    for (const statement of sql.split(/;\s*(?=CREATE|PRAGMA|$)/).filter(v => v.trim())) await db.prepare(statement).run();
+    for (const statement of sql.split(/;\s*(?=CREATE|PRAGMA|ALTER|$)/).filter(v => v.trim())) await db.prepare(statement).run();
   }
   const bucket = await mf.getR2Bucket('STATIC');
   await bucket.put('index.html', '<!doctype html><title>Mirror</title>', { httpMetadata: { contentType: 'text/html' } });
@@ -82,7 +82,7 @@ test('concurrent identical random commands commit once and return the same outco
 });
 test('different simultaneous moves cannot overwrite each other; status reads the winner', async () => {
   const a = await register('RaceCaller');
-  const replies = await Promise.all(['woods', 'drink'].map(command => request('/api/commands', { cookie: a.cookie, data: move(command) })));
+  const replies = await Promise.all(['woods', 'rest'].map(command => request('/api/commands', { cookie: a.cookie, data: move(command) })));
   assert.deepEqual(replies.map(r => r.status).sort(), [200, 409]);
   const state = await request('/api/world', { cookie: a.cookie });
   assert.deepEqual(state.data.world, replies.find(r => r.status === 200).data.world);
@@ -129,8 +129,8 @@ async function funded(handle) {
   await db.prepare("UPDATE worlds SET state_json=json_set(state_json, '$.copper', 20) WHERE account_id=(SELECT id FROM accounts WHERE handle_key=?)").bind(handle.toLowerCase()).run();
   return a;
 }
-const quote = (a, item='Whispering pear cider', price=3, revision=0) => request('/api/tavern-offers', {
-  cookie: a.cookie, data: { item, price, expected_revision: revision }
+const quote = (a, item='Whispering pear cider', price=3, revision=0, kind='drink') => request('/api/tavern-offers', {
+  cookie: a.cookie, data: { item, price, kind, expected_revision: revision }
 });
 test('invented offer changes no balance; accepting spends once and persists across login', async () => {
   const a = await funded('BuyerOne');
@@ -178,4 +178,49 @@ test('two different purchase requests racing cannot double-spend', async () => {
   assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
   const saved=await request('/api/world',{cookie:a.cookie});
   assert.equal(saved.data.world.state.copper,16); assert.equal(saved.data.world.state.inventory.length,1);
+});
+
+test('typed consumption removes exactly one serving, preserves money and health, and replays once', async () => {
+  const a=await funded('ConsumeCaller');
+  const first=await quote(a,"Rain's Ale",3,0,'drink');
+  await request('/api/commands',{cookie:a.cookie,data:move('buy '+first.data.offer.id)});
+  const second=await quote(a,"Rain's Ale",3,1,'drink');
+  await request('/api/commands',{cookie:a.cookie,data:move('buy '+second.data.offer.id,1)});
+  const data=move("drink rain's ale",2);
+  const replies=await Promise.all([1,2,3].map(()=>request('/api/commands',{cookie:a.cookie,data})));
+  for(const r of replies) {
+    assert.equal(r.status,200); assert.deepEqual(r.data.world.state.inventory,["Rain's Ale"]);
+    assert.equal(r.data.world.state.copper,14); assert.equal(r.data.world.state.health,100);
+  }
+  const final=await request('/api/commands',{cookie:a.cookie,data:move("use rain's ale",3)});
+  assert.equal(final.status,200); assert.deepEqual(final.data.world.state.inventory,[]);
+  assert.deepEqual(final.data.world.state.itemTypes,{});
+  assert.equal((await request('/api/commands',{cookie:a.cookie,data:move("drink rain's ale",4)})).status,400);
+  const back=await request('/api/login',{data:{handle:'ConsumeCaller',password}});
+  assert.equal(back.data.world.revision,4); assert.deepEqual(back.data.world.state.inventory,[]);
+});
+test('actions reject wrong types and bare verbs; food consumption works without changing location', async () => {
+  const a=await funded('FoodCaller'), q=await quote(a,'Lantern Pie',5,0,'food');
+  await request('/api/commands',{cookie:a.cookie,data:move('buy '+q.data.offer.id)});
+  for(const command of ['drink lantern pie','drink','eat','use','eat missing food']) {
+    const r=await request('/api/commands',{cookie:a.cookie,data:move(command,1)});
+    assert.equal(r.status,400); assert.match(r.data.error,/consume|cannot|do not have/);
+  }
+  await request('/api/commands',{cookie:a.cookie,data:move('woods',1)});
+  const r=await request('/api/commands',{cookie:a.cookie,data:move('eat LANTERN PIE',2)});
+  assert.equal(r.status,200); assert.deepEqual(r.data.world.state.inventory,[]);
+  assert.equal(r.data.world.state.location,'woods_edge'); assert.equal(r.data.world.state.copper,15);
+});
+test('legacy items are never classified from their names and arbitrary type/effect requests have no authority', async () => {
+  const a=await funded('LegacyItemCaller');
+  for(const kind of ['healing',[],['food'],{},3]) assert.equal((await quote(a,'Mystery',2,0,kind)).status,400);
+  const legacy=await request('/api/tavern-offers',{cookie:a.cookie,data:{item:'Very Drinkable Ale',price:2,expected_revision:0}});
+  await request('/api/commands',{cookie:a.cookie,data:move('buy '+legacy.data.offer.id)});
+  const invalid=await request('/api/commands',{cookie:a.cookie,data:{...move('drink very drinkable ale',1),kind:'drink',effects:{health:999}}});
+  assert.equal(invalid.status,400); assert.match(invalid.data.error,/no supported use/);
+  const contradictory=await quote(a,'Very Drinkable Ale',2,1,'drink');
+  assert.equal((await request('/api/commands',{cookie:a.cookie,data:move('buy '+contradictory.data.offer.id,1)})).status,400);
+  const saved=await request('/api/world',{cookie:a.cookie});
+  assert.equal(saved.data.world.revision,1); assert.equal(saved.data.world.state.copper,18);
+  assert.deepEqual(saved.data.world.state.inventory,['Very Drinkable Ale']);
 });

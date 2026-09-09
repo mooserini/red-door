@@ -53,7 +53,7 @@ analytics, or submission of that text. Browser/OS memory management is outside
 that application-level guarantee. Normal game actions continue saving as before.
 
 Ara can now return a structured offer alongside her dialogue. Items are invented
-by the model, not selected from a catalog. The browser submits only the item name
+by the model, not selected from a catalog. The browser submits only the item name, type,
 and integer price to `/api/tavern-offers`; the server validates a 1–20 copper
 range, binds the quote to the signed-in caller and current world revision, and
 keeps at most one pending offer per caller. Offers expire after ten minutes.
@@ -67,7 +67,21 @@ Retries cannot charge twice. A stale, replaced, expired, or unaffordable offer
 changes nothing. `cancel`, a new conversation turn, or a move discards the local
 offer; another quote replaces it on the server. Successful purchases clear the
 model context so the next turn starts from the saved balance and possessions.
-Purchased items are inventory labels without inferred healing or quest powers.
+Purchased items carry a `food` or `drink` type alongside their inventory labels.
+The engine maps these types to `eat <item name>` and `drink <item name>`;
+`use <item name>` selects the appropriate supported action. Matching ignores
+case but requires the full name. Each action consumes one serving through the
+same revision-checked receipt transaction; retries cannot consume a second one.
+Bare verbs ask for an item name. Wrong types and missing items reject without
+changing a save. Consumption does not grant healing, change copper, or move the
+player. No model participates in validating or reconciling these actions.
+
+`state.itemTypes` maps case-folded labels to a supported type. Inventory retains
+one label per serving, keeping older saves readable. Identically named servings
+must share a type. Unknown older items are unusable until explicitly classified;
+there is no keyword guessing. The displayed inventory and offer include the type.
+For Moose, the two purchases reported in the test were explicitly classified by
+an operator receipt; the original items and balance were preserved.
 
 For this experiment, Moose receives a one-time operator-recorded 20-copper purse.
 Existing other callers default to zero; there is no public refill command. The

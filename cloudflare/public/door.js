@@ -51,7 +51,7 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
     tree.replaceChildren(); tree.classList.add('hide');
     if (!busy && matchMedia('(max-width:519px)').matches && (step === 'menu' || step === 'game')) {
       const options = step === 'menu' ? [['l', 'Log in'], ['n', 'New caller'], ['q', 'Return to Mirror']]
-        : ['tavern', 'talk', 'woods', 'explore', 'search', 'rest', 'drink', 'status', 'leave'].map(v => [v, v]);
+        : ['tavern', 'talk', 'woods', 'explore', 'search', 'rest', 'drink', 'eat', 'status', 'leave'].map(v => [v, v]);
       for (const [value, label] of options) {
         const button = document.createElement('button'); button.className = 'cmd-btn'; button.textContent = label;
         button.addEventListener('click', () => { void submit(value); }); tree.append(button);
@@ -67,7 +67,10 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
     await writer.write([
       { text: PLACES[state.location] || state.location, style: 'magenta' },
       state.last_scene, '',
-      `${state.name}  |  Health: ${state.health}  |  Copper: ${state.copper ?? 0}  |  Inventory: ${state.inventory.join(', ') || 'empty'}`,
+      `${state.name}  |  Health: ${state.health}  |  Copper: ${state.copper ?? 0}  |  Inventory: ${state.inventory.map(item => {
+        const kind = Object.hasOwn(state.itemTypes ?? {}, item.toLowerCase()) ? state.itemTypes[item.toLowerCase()] : null;
+        return kind ? `${item} [${kind}]` : item;
+      }).join(', ') || 'empty'}`,
       { text: `Saved. Revision ${world.revision}.`, style: 'dim' }, ''
     ]);
     if (state.location === 'tavern') await writer.write([{ text: 'TALK <your words> to Ara. Dialogue is temporary. BUY accepts the displayed offer and saves the purchase. TALK OFF uses scripted lines.', style: 'dim' }]);
@@ -145,7 +148,8 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
           await api('/api/logout', {}); await leave(); return;
         }
         if (cmd === 'help') {
-          await writer.write(['tavern / woods / explore / search / rest / drink',
+          await writer.write(['tavern / woods / explore / search / rest',
+            'drink <item name> / eat <item name> / use <item name> - consume one owned serving',
             'talk [words] - chat with Ara at the tavern; not saved',
             'talk off / on / reset - scripted only / local model / forget conversation',
             'buy - pay the exact displayed copper price; item and balance are saved',
@@ -225,16 +229,17 @@ export function createDoor({ screen, input, inputRow, tree, romBtn, mobilePrompt
     }
   }
   async function showOffer() {
-    await writer.write([{ text: `OFFER: ${quoted.item} — ${quoted.price} copper. Your purse: ${world.state.copper ?? 0} copper.`, style: 'magenta' },
+    await writer.write([{ text: `OFFER: ${quoted.item} [${quoted.kind ?? 'other'}] — ${quoted.price} copper. Your purse: ${world.state.copper ?? 0} copper.`, style: 'magenta' },
       'Type BUY to accept this price, or CANCEL. Valid for 10 minutes or until your next move or conversation turn.', '']);
   }
   async function sendPending() {
     try {
       const result = await api('/api/commands', pending);
       const bought = pending.command.startsWith('buy ');
+      const consumed = /^(drink|eat|use|ale)\s/.test(pending.command);
       const travel=['tavern','home','woods','forest','explore','deeper'].includes(pending.command);
       const moved=world && result.world.state.location!==world.state.location;
-      if (moved || bought) barkeep.reset();
+      if (moved || bought || consumed) barkeep.reset();
       // Clear only once travel is acknowledged. Failed moves keep the current scene.
       if(travel || moved) writer.clear();
       world = result.world; pending = null; quoted = null; await showWorld();

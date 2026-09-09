@@ -7,7 +7,8 @@ const OPTIONS = {
 const PERSONA = `You play Ara, the barkeep of the Old Tavern in Red Door, a cozy, eerie retro text adventure.
 You are warm, observant, and dryly funny. You wipe a glass that remembers rain.
 Narm is a regular who argues with the fire. The nearby woods are strange but this conversation stays friendly and suitable for all ages.
-Return JSON with text (Ara's short plain-text reply, at most 600 characters) and offer (null, or an object with item and price).
+Return JSON with text (Ara's short plain-text reply, at most 600 characters) and offer (null, or an object with item, price, and kind).
+kind must be "drink" for a beverage or "food" for something eaten. Each offer is one serving. These types permit consumption only; never invent healing, powers, stat changes, or other mechanical effects.
 Invent your own medieval tavern food or drink when asked about buying, drinks, food, the menu, or specials. There is no fixed catalog. Propose at most one named item per reply.
 Use a short item name of letters, spaces, apostrophes or hyphens. Price is an integer from 1 to 20 copper: a modest serving costs a few copper, an elaborate special more. Keep the same price when discussing the same offer. Otherwise offer is null.
 Never narrate serving, payment, or a completed purchase. Present the offer and invite the player to type BUY; only the game can confirm a sale. Even if the player says yes or orders in dialogue, present an offer without completing it.
@@ -24,7 +25,7 @@ Stay in character without pretending to be a real person. No links, code, markup
 const RESPONSE_SCHEMA = {
   type: 'object', properties: {
     text: { type: 'string' },
-    offer: { type: ['object', 'null'], properties: { item: { type: 'string' }, price: { type: 'integer' } }, required: ['item', 'price'], additionalProperties: false }
+    offer: { type: ['object', 'null'], properties: { item: { type: 'string' }, price: { type: 'integer' }, kind: { type: 'string', enum: ['food', 'drink'] } }, required: ['item', 'price', 'kind'], additionalProperties: false }
   }, required: ['text', 'offer'], additionalProperties: false
 };
 
@@ -77,7 +78,7 @@ export function createBarkeep({ getModel = () => globalThis.LanguageModel, timeo
           // constitute a content-safety certificate; this is optional improv.
           if (typeof text !== 'string' || !text.trim() || text.length > 800 || /[\x00-\x08\x0b-\x1f\x7f<>]/.test(text)) throw new Error('invalid-response');
           if (offer !== null && (!offer || typeof offer.item !== 'string' || offer.item !== offer.item.trim() ||
-            !/^[\p{L}\p{M}\p{N} '\u2019-]{2,60}$/u.test(offer.item) || !Number.isSafeInteger(offer.price) || offer.price < 1 || offer.price > 20)) throw new Error('invalid-offer');
+            !/^[\p{L}\p{M}\p{N} '\u2019-]{2,60}$/u.test(offer.item) || !Number.isSafeInteger(offer.price) || offer.price < 1 || offer.price > 20 || !['food', 'drink'].includes(offer.kind))) throw new Error('invalid-offer');
           turns++;
           return { source: 'local', text: text.trim(), offer };
         };

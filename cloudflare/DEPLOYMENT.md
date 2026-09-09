@@ -173,3 +173,27 @@ Asset hashes (SHA-256):
 
 - `barkeep.js`: `6755ac54dca99680ce81a7816048fabef927d95f1ab242439b1b481ee227cdc2`.
 - `door.js`: `9b97e28cf731dd01786f9285d4d7908c0f3fd82e8c493f38609970352df3125d`.
+
+## Typed item actions — 2026-09-09 EDT
+
+- Applied `0003_item_types.sql`; deployed Worker
+  `3b05a2b5-1f8d-474e-80d4-7085e9d70301`, then updated `barkeep.js` and `door.js`.
+- Generated food/drink offers now carry an explicit type. Purchase saves that
+  type; deterministic DRINK/EAT/USE actions consume exactly one matching owned
+  serving. Missing items, incompatible types, and bare verbs do not save.
+- Both builds/type checks and all 29 tests passed, including consumption retries,
+  duplicate servings, persistence after login, wrong types, and legacy items.
+- Hosted JS assets matched local bytes. No production item was consumed in QA.
+- Moose's two existing purchases were explicitly classified by operator receipt
+  `operator:classify-owned-consumables-v1` at revision 10. Before/after comparison
+  confirmed only itemTypes changed: balance remains 7 copper, all three inventory
+  objects remain, and health/location/other fields are preserved. Snapshots and
+  the receipt statement are under ignored `backups/item-types-2026-09-09/`.
+- Old untyped objects gain no inferred use or powers. Consumption has no added
+  health/stat effect and does not call an AI model. Refresh loads the new help,
+  inventory type labels, and offer format.
+
+Asset hashes (SHA-256):
+
+- `barkeep.js`: `648cc39dfa145c3b2baede0f739ad316c2c5eb2c59ef29eff39ddc1978806dc2`.
+- `door.js`: `e9fd447b5657a3ea99b932d3ad201bc73b94ce509b98b6dc685e2f1f0cc0565a`.
