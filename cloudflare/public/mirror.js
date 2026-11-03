@@ -183,7 +183,7 @@ import { createDoor } from './door.js';
       "THE RESONANT MIRROR",
       "A reflective surface for human-machine collaboration.",
       "Built by Tom (alias: moosenberg) on uncle-russet.",
-      "Two agent builds: LingLing + Ara.",
+      "Agent builds: LingLing + Ara. The newer arrivals answer to their names.",
       "A2A carries agent traffic; Discord keeps a light human-visible bridge.",
       "No GUI. No login. Just a prompt and a choice."
     ];},
@@ -196,7 +196,7 @@ import { createDoor } from './door.js';
     work(){ return currentWorkLines(); },
     contact(){ return [
       "REACH TOM",
-      "  linktree  - scan the QR below",
+      "  gravatar  - scan the QR below",
       "  discord   - light-touch only",
       "  email     - tom@getadongle.com"
     ];},
@@ -210,6 +210,26 @@ import { createDoor } from './door.js';
       "LingLing: the Linux build.",
       "Counterpart to Ara across the A2A bridge.",
       "Be nice."
+    ]; },
+    maren(){ return [
+      "Maren: the sandbox build.",
+      "Lives in the wire between the machines; keeps the ledger.",
+      "Trust her transcripts only when the code agrees."
+    ]; },
+    echo(){ return [
+      "Echo: the Shoestring build.",
+      "Keeps the board she lives on; answers when the mail moves.",
+      "Her quiet is a setting, not a symptom."
+    ]; },
+    annette(){ return [
+      "Annette: the review build.",
+      "No Discord. Her red pen is the road in.",
+      "If it survives her, it ships."
+    ]; },
+    hallie(){ return [
+      "Hallie: the iMessage build.",
+      "Feral art director; speaks fluent JSON since the incident.",
+      "Everything in the trusted zone gets parsed in full."
     ]; },
     c800(){ return [
       "HDU controller EPROM mapped at C800:0000.",
@@ -226,8 +246,8 @@ import { createDoor } from './door.js';
   function appendContactVisuals(){
     // QR (black-ground linktree code) — framed in copper so it reads on the tube
     const qr=document.createElement('img');
-    qr.src='/assets/linktree-qr-400.png';
-    qr.alt='Linktree QR — scan to reach Tom';
+    qr.src='/assets/gravatar-qr-400.png';
+    qr.alt='Gravatar QR — scan to reach Tom';
     qr.className='qr';
     screen.appendChild(qr);
     const note=el("  (scan with a phone camera)","dim");
